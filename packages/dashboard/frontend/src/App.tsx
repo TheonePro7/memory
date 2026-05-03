@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Layout, Menu, Typography, theme } from "antd";
+import { ConfigProvider, Layout, Menu, Typography, theme } from "antd";
 import {
   HomeOutlined,
   DatabaseOutlined,
@@ -26,6 +26,17 @@ const menuItems = [
   { key: "settings", icon: <SettingOutlined />, label: "设置" },
 ];
 
+const themeConfig = {
+  token: {
+    colorPrimary: "#1a1a2e",
+    colorBgContainer: "#ffffff",
+    colorBgLayout: "#f8f9fa",
+    colorBorderSecondary: "#edf0f5",
+    borderRadius: 10,
+    fontFamily: '"Noto Sans CJK SC", "Source Han Sans SC", -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+  },
+};
+
 function App() {
   const [page, setPage] = useState("overview");
   const [collapsed, setCollapsed] = useState(false);
@@ -51,6 +62,7 @@ function App() {
   };
 
   return (
+    <ConfigProvider theme={themeConfig}>
     <Layout style={{ minHeight: "100vh" }}>
       <Sider
         collapsible
@@ -83,6 +95,7 @@ function App() {
         {pages[page] || <Overview stats={stats} />}
       </Content>
     </Layout>
+    </ConfigProvider>
   );
 }
 
