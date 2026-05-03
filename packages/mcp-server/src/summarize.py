@@ -34,7 +34,7 @@ def _with_claude(text: str) -> dict:
             "content-type": "application/json",
         },
         json={
-            "model": "claude-sonnet-4-20250506",
+            "model": os.environ.get("SUMMARY_MODEL", "claude-sonnet-4-20250506"),
             "max_tokens": 1024,
             "messages": [{
                 "role": "user",

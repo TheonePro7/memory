@@ -6,6 +6,9 @@ from .router import route
 from .backends import mem0_backend, md_backend
 from .summarize import generate_summary
 from . import audit
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
 mcp = FastMCP("agent-memory")
 
@@ -27,10 +30,9 @@ def remember(
         auto_verify: 后台 LLM 去噪（Hook 自动提取时启用）
         project_id: 项目隔离
     """
-    target = route(content)
     result = mem0_backend.add(content, project_id=project_id, tags=tags)
-    audit.log("remember", content_summary=content[:50], backend=target, tags=tags)
-    return {"id": result.get("id"), "backend": target, "status": "stored"}
+    audit.log("remember", content_summary=content[:50], backend="mem0", tags=tags)
+    return {"id": result.get("id"), "backend": "mem0", "status": "stored"}
 
 
 @mcp.tool()
@@ -99,7 +101,7 @@ def forget(pattern: str, backend: str | None = None) -> dict:
         backend: "mem0" | "markdown" | None（全部）
     """
     audit.log("forget", pattern=pattern)
-    return {"deleted": 0, "status": "not_fully_implemented"}
+    return {"deleted": 0, "status": "not_implemented", "message": "Forget is not yet implemented. Memory data is preserved."}
 
 
 @mcp.tool()

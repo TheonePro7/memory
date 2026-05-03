@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ConfigProvider, Layout, Menu, Typography, theme } from "antd";
+import type { ThemeConfig } from "antd";
 import {
   HomeOutlined,
   DatabaseOutlined,
@@ -26,7 +27,7 @@ const menuItems = [
   { key: "settings", icon: <SettingOutlined />, label: "设置" },
 ];
 
-const themeConfig = {
+const themeConfig: ThemeConfig = {
   token: {
     colorPrimary: "#1a1a2e",
     colorBgContainer: "#ffffff",

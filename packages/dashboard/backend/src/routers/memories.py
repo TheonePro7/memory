@@ -11,7 +11,7 @@ def list_memories(q: str = "", limit: int = 50):
     if q:
         results = mem0_backend.search(q, limit=limit)
     else:
-        results = mem0_backend.search("", limit=limit)
+        results = mem0_backend.list_all(limit=limit)
     return {"results": results, "total": len(results)}
 
 

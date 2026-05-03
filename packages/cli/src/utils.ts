@@ -3,13 +3,15 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync } fr
 import { homedir } from "os";
 import { join } from "path";
 
-export const MEMORY_DIR = join(process.cwd(), "memory");
-export const MEMORY_DOT_DIR = join(process.cwd(), ".memory");
+const PROJECT_ROOT = process.env.AGENT_MEMORY_PROJECT_ROOT || process.cwd();
+
+export const MEMORY_DIR = join(PROJECT_ROOT, "memory");
+export const MEMORY_DOT_DIR = join(PROJECT_ROOT, ".memory");
 export const CONFIG_DIR = join(homedir(), ".agent-memory");
 export const CONFIG_PATH = join(CONFIG_DIR, "config.yaml");
-export const HOOKS_PATH = join(process.cwd(), ".claude", "hooks.json");
-export const CLAUDE_MD_PATH = join(process.cwd(), "CLAUDE.md");
-export const SETTINGS_PATH = join(process.cwd(), ".claude", "settings.local.json");
+export const HOOKS_PATH = join(PROJECT_ROOT, ".claude", "hooks.json");
+export const CLAUDE_MD_PATH = join(PROJECT_ROOT, "CLAUDE.md");
+export const SETTINGS_PATH = join(PROJECT_ROOT, ".claude", "settings.local.json");
 
 export interface InstallOptions {
   withTasks?: boolean;
@@ -50,12 +52,29 @@ export function writeConfig(userId = "default", projectId = ""): void {
 }
 
 export function writeHooks(): void {
-  const hooks = {
+  const dir = join(process.cwd(), ".claude");
+  ensureDir(dir);
+
+  let existing: Record<string, string[]> = {};
+  if (existsSync(HOOKS_PATH)) {
+    try {
+      existing = JSON.parse(readFileSync(HOOKS_PATH, "utf-8"));
+    } catch { /* ignore parse errors */ }
+  }
+
+  const newHooks = {
     onSessionStart: ["agent-memory recall"],
     onSessionEnd: ["agent-memory summarize"],
   };
-  ensureDir(join(process.cwd(), ".claude"));
-  writeFileSync(HOOKS_PATH, JSON.stringify(hooks, null, 2), "utf-8");
+
+  const merged: Record<string, string[]> = {};
+  for (const key of new Set([...Object.keys(existing), ...Object.keys(newHooks)])) {
+    const existingCmds = existing[key] || [];
+    const newCmds = newHooks[key as keyof typeof newHooks] || [];
+    merged[key] = [...new Set([...existingCmds, ...newCmds])];
+  }
+
+  writeFileSync(HOOKS_PATH, JSON.stringify(merged, null, 2), "utf-8");
 }
 
 export function writeClaudeMd(): void {
@@ -79,8 +98,22 @@ export function writeClaudeMd(): void {
 }
 
 export function writeMcpConfig(serverScriptPath: string): void {
-  const config = {
+  const dir = join(process.cwd(), ".claude");
+  ensureDir(dir);
+
+  // Read existing settings if any
+  let existing: Record<string, any> = {};
+  if (existsSync(SETTINGS_PATH)) {
+    try {
+      existing = JSON.parse(readFileSync(SETTINGS_PATH, "utf-8"));
+    } catch { /* ignore parse errors */ }
+  }
+
+  // Merge agent-memory MCP config
+  const merged = {
+    ...existing,
     mcpServers: {
+      ...existing.mcpServers,
       "agent-memory": {
         command: "python",
         args: [serverScriptPath],
@@ -88,8 +121,8 @@ export function writeMcpConfig(serverScriptPath: string): void {
       },
     },
   };
-  ensureDir(join(process.cwd(), ".claude"));
-  writeFileSync(SETTINGS_PATH, JSON.stringify(config, null, 2), "utf-8");
+
+  writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2), "utf-8");
 }
 
 export function removeConfig(): void {
