@@ -10,3 +10,13 @@ dist/
 
 # Worktrees
 .worktrees/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local memory data
+.memory/
+
+# Brainstorming visual companion
+.superpowers/
