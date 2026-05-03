@@ -1,7 +1,12 @@
 """Agent 记忆系统 MCP 服务入口"""
 
+import os
 import sys
 from pathlib import Path
+
+# mem0 v2 在 get_all() 时检查 OpenAI API key（即使使用本地 fastembed）
+if not os.environ.get("OPENAI_API_KEY"):
+    os.environ["OPENAI_API_KEY"] = "sk-dummy-for-local-embedding"
 
 # 支持作为脚本直接运行: python src/server.py
 sys.path.insert(0, str(Path(__file__).resolve().parent))

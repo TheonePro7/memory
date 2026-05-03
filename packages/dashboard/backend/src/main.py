@@ -1,8 +1,11 @@
 """Dashboard FastAPI 入口"""
 
+import os
 import sys
 from pathlib import Path
 
+# 支持作为脚本直接运行
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 # 共享 MCP 服务的后端代码
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent / "mcp-server" / "src"))
 
@@ -11,9 +14,13 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
+# mem0 v2 在 get_all() 时检查 OpenAI API key（即使使用本地 fastembed）
+if not os.environ.get("OPENAI_API_KEY"):
+    os.environ["OPENAI_API_KEY"] = "sk-dummy-for-local-embedding"
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
-from .routers import memories, sessions, stats
+from routers import memories, sessions, stats
 
 app = FastAPI(title="Agent Memory Dashboard")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
