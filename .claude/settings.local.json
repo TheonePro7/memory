@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Force \"$env:USERPROFILE\\\\.claude\\\\projects\" -Recurse -Depth 3 -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-ChildItem -Force \"$env:USERPROFILE\\\\.claude\" -ErrorAction SilentlyContinue)",
+      "Read(//c/Users/Administrator/.claude/projects/f--AI-memory/**)",
+      "Read(//c/Users/Administrator/.claude/projects/**)",
+      "Read(//f/AI/**)",
+      "WebSearch",
+      "WebFetch(domain:arxiv.org)",
+      "WebFetch(domain:mem0.ai)",
+      "WebFetch(domain:www.letta.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "PowerShell(node --version 2>$null)",
+      "PowerShell(npm --version 2>$null)",
+      "PowerShell(python --version 2>$null)",
+      "PowerShell(go version 2>$null)",
+      "PowerShell(bun --version 2>$null)",
+      "PowerShell(Get-ChildItem \"$env:USERPROFILE\\\\.claude\" -ErrorAction SilentlyContinue | Select-Object Name; Get-ChildItem \"$env:USERPROFILE\\\\.claude\\\\plugins\" -ErrorAction SilentlyContinue | Select-Object Name; Get-ChildItem \"$env:USERPROFILE\\\\.claude-mem\" -ErrorAction SilentlyContinue | Select-Object Name; Get-ChildItem \".mcp.json\" -ErrorAction SilentlyContinue | Select-Object FullName; Get-ChildItem \"f:\\\\AI\\\\memory\\\\.mcp.json\" -ErrorAction SilentlyContinue | Select-Object FullName)",
+      "PowerShell(Get-ChildItem \"$env:USERPROFILE\\\\.claude\" -ErrorAction SilentlyContinue | Select-Object Name; Get-ChildItem \"$env:USERPROFILE\\\\.claude\\\\plugins\" -ErrorAction SilentlyContinue | Select-Object Name, LastWriteTime 2>$null; Get-Content \"$env:USERPROFILE\\\\.claude\\\\settings.json\" -ErrorAction SilentlyContinue)",
+      "Bash(npm --version)",
+      "Bash(pip --version)",
+      "Bash(beads --version)",
+      "PowerShell(bd --version 2>&1)",
+      "PowerShell(if \\($?\\) { \"beads OK\" } else { \"beads not found\" })"
+    ]
+  }
+}
