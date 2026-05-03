@@ -1,11 +1,17 @@
 """Agent 记忆系统 MCP 服务入口"""
 
+import sys
+from pathlib import Path
+
+# 支持作为脚本直接运行: python src/server.py
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 from fastmcp import FastMCP
 
-from .router import route
-from .backends import mem0_backend, md_backend
-from .summarize import generate_summary
-from . import audit
+from router import route
+from backends import mem0_backend, md_backend
+from summarize import generate_summary
+import audit
 import logging
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
