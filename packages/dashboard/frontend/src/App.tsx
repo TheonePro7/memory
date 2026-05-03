@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Layout, Nav, Avatar, Typography } from "@douyinfe/semi-ui";
-import { IconHome, IconHistogram, IconBox, IconSetting } from "@douyinfe/semi-icons";
+import { Layout, Menu, Typography, theme } from "antd";
+import {
+  HomeOutlined,
+  DatabaseOutlined,
+  ClockCircleOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
 import Overview from "./pages/Overview";
 import Memories from "./pages/Memories";
 import Timeline from "./pages/Timeline";
@@ -14,13 +19,22 @@ export interface Stats {
   recent_sessions: string[];
 }
 
+const menuItems = [
+  { key: "overview", icon: <HomeOutlined />, label: "总览" },
+  { key: "memories", icon: <DatabaseOutlined />, label: "记忆浏览" },
+  { key: "timeline", icon: <ClockCircleOutlined />, label: "时间线" },
+  { key: "settings", icon: <SettingOutlined />, label: "设置" },
+];
+
 function App() {
   const [page, setPage] = useState("overview");
+  const [collapsed, setCollapsed] = useState(false);
   const [stats, setStats] = useState<Stats>({
     total_memories: 0,
     total_sessions: 0,
     recent_sessions: [],
   });
+  const { token } = theme.useToken();
 
   useEffect(() => {
     fetch("/api/stats")
@@ -37,25 +51,35 @@ function App() {
   };
 
   return (
-    <Layout style={{ height: "100vh" }}>
-      <Sider>
-        <Nav
-          defaultSelectedKeys={["overview"]}
-          items={[
-            { itemKey: "overview", text: "总览", icon: <IconHome /> },
-            { itemKey: "memories", text: "记忆浏览", icon: <IconBox /> },
-            { itemKey: "timeline", text: "时间线", icon: <IconHistogram /> },
-            { itemKey: "settings", text: "设置", icon: <IconSetting /> },
-          ]}
-          onSelect={(e) => setPage(e.itemKey as string)}
-          header={{
-            logo: <Avatar size="small" style={{ backgroundColor: "#0077FA" }}>M</Avatar>,
-            text: <Typography.Title heading={6}>Agent Memory</Typography.Title>,
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sider
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        style={{ background: token.colorBgContainer }}
+      >
+        <div
+          style={{
+            height: 64,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderBottom: `1px solid ${token.colorBorderSecondary}`,
           }}
-          footer={{ collapseButton: true }}
+        >
+          <Typography.Title level={4} style={{ margin: 0, color: token.colorPrimary }}>
+            {collapsed ? "AM" : "Agent Memory"}
+          </Typography.Title>
+        </div>
+        <Menu
+          mode="inline"
+          selectedKeys={[page]}
+          items={menuItems}
+          onClick={({ key }) => setPage(key)}
+          style={{ borderRight: 0 }}
         />
       </Sider>
-      <Content style={{ padding: "24px", overflow: "auto" }}>
+      <Content style={{ padding: 24, overflow: "auto", background: token.colorBgLayout }}>
         {pages[page] || <Overview stats={stats} />}
       </Content>
     </Layout>

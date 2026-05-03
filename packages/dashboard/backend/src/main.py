@@ -19,7 +19,7 @@ app.include_router(memories.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 
-static_dir = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+static_dir = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if static_dir.exists():
     app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="frontend")
 
