@@ -16,6 +16,7 @@ MVP：`npx @agent-memory/init` — 一键激活 Agent 记忆的 CLI 工具。
 
 ## 核心原则
 
+0. **全程使用中文交流** — 所有输出、注释、消息全部用中文，禁止用英文回复
 1. 先想清楚，再写代码 — 产品定义锁死前不写代码
 2. 产品即过程 — 手动流程的自动化 = 产品
 3. AI 是自己的第一个用户 — 用自身验证产品效果
@@ -32,7 +33,7 @@ MVP：`npx @agent-memory/init` — 一键激活 Agent 记忆的 CLI 工具。
 
 ## 开发工作流
 
-使用全局 skill **devflow** 编排 7 阶段开发流程。说"开发""实现""做个功能"等会自动触发。
+使用全局 skill **devflow** 编排 8 阶段开发流程（Phase -1 到 6）。说"优化"或"分析"会自动触发 Phase -1 项目体检。说"开发""实现""做个功能"等会自动触发全流程。
 详细流程见 `.claude/workflow.md`（如有）或参考 skill 定义。
 
 ## 当前状态
@@ -91,3 +92,8 @@ bd close <id>         # Complete work
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 <!-- END BEADS INTEGRATION -->
+
+## 记忆系统
+
+你拥有持久记忆能力。当用户说"记住""注意""以后要知道"等时，主动调用 remember() 工具。
+会话结束时系统会自动 summarize，不需要你手动操作。
