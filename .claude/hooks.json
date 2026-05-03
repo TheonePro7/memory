@@ -1,0 +1,8 @@
+{
+  "onSessionStart": [
+    "python f:\\AI\\memory\\packages\\python-cli\\src\\main.py recall"
+  ],
+  "onSessionEnd": [
+    "python f:\\AI\\memory\\packages\\python-cli\\src\\main.py summarize"
+  ]
+}
