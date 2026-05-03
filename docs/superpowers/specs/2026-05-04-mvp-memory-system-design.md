@@ -5,6 +5,9 @@
 
 ---
 
+> **UI 更新：** Ant Design → 浅色精致主题，思源黑体（Noto Sans CJK SC）
+> **状态更新：** 代码已全部完成，需要修复可运行性问题
+
 ## 1. 概述
 
 ### 1.1 产品定位
@@ -19,7 +22,7 @@
 | Markdown 时间线日志 | nocturne 层级结构记忆 |
 | 规则驱动路由层 | beads 任务管理 |
 | Hook 自动化 | LLM 路由分类（MVP 只用规则） |
-| Semi Design Dashboard | 多用户/权限系统 |
+| Ant Design Dashboard | 多用户/权限系统 |
 | CLI 安装/卸载 | 云服务/团队协作 |
 | 多 Agent 配置适配 | |
 
@@ -67,7 +70,7 @@ f:\AI\memory\
 │   │   │   │                   # 直接 import mcp-server 的后端代码
 │   │   └── pyproject.toml
 │   │
-│   └── dashboard/            # Semi Design 可视化
+│   └── dashboard/            # Ant Design 可视化
 │       ├── backend/
 │       │   ├── src/
 │       │   │   ├── main.py       # FastAPI 入口
@@ -252,16 +255,36 @@ agent-memory dashboard                    # 启动可视化
 
 ---
 
-## 5. Dashboard（React + Semi Design）
+## 5. Dashboard（React + Ant Design）
 
 ### 5.1 技术栈
 
 | 层 | 选型 | 理由 |
 |---|---|---|
-| UI 框架 | Semi Design（字节跳动） | 大厂维护，专业 dashboard 组件 |
+| UI 框架 | Ant Design | 生态最大，专业组件 |
+| 字体 | 思源黑体 (Noto Sans CJK SC) | 开源可商用，中文显示优秀 |
+| 主题 | 浅色精致（白色/浅灰底色，细边框，克制阴影） | 质感、舒适 |
 | 前端框架 | React 18 + TypeScript | 生态最大 |
 | 后端 | FastAPI（Python） | 共享 MCP 的 mem0 配置 |
 | 构建 | Vite | 快 |
+
+### 5.2 Ant Design 主题配置
+
+通过 `ConfigProvider` 覆盖默认 token：
+
+```typescript
+const theme = {
+  token: {
+    colorPrimary: '#1a1a2e',
+    colorBgContainer: '#ffffff',
+    colorBgLayout: '#f8f9fa',
+    colorBorderSecondary: '#edf0f5',
+    borderRadius: 10,
+    fontFamily: '"Noto Sans CJK SC", "Source Han Sans SC", -apple-system, "PingFang SC", sans-serif',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+  },
+};
+```
 
 ### 5.2 页面
 
@@ -398,47 +421,39 @@ Hook 是 shell 命令，不能直接调 MCP 协议。因此需要一个 `agent-m
 
 ---
 
-## 9. 实现顺序
+## 9. 实现顺序（当前状态：代码已完成，需修复可运行性）
 
-### Phase 1: MCP 服务核心
+### Phase 1: CLI 安装器编译
 
-| 任务 | 时间 |
+| 任务 | 说明 |
 |---|---|
-| FastMCP 骨架 + 工具注册 | ~15min |
-| mem0 后端（add/search/delete/stats） | ~15min |
-| Markdown 后端（写/读/grep） | ~10min |
-| 规则路由 | ~10min |
-| summarize（LLM + fallback） | ~15min |
-| audit log | ~10min |
+| 安装 `packages/cli/` 依赖 | `npm install` |
+| 编译 TypeScript | `npx tsc`，生成 `dist/index.js` |
 
-### Phase 2: CLI 安装器
+### Phase 2: MCP 服务器验证
 
-| 任务 | 时间 |
+| 任务 | 说明 |
 |---|---|
-| npx 包结构 + 入口 | ~10min |
-| init 命令（pip + 目录 + 配置 + hooks + CLAUDE.md） | ~20min |
-| remove 命令 | ~10min |
+| 验证 Python 依赖完整 | mem0ai, fastmcp, httpx, pyyaml |
+| 启动测试 | 运行 server.py，测试 remember/recall 链路 |
 
-### Phase 3: Dashboard
+### Phase 3: Dashboard 修复
 
-| 任务 | 时间 |
+| 任务 | 说明 |
 |---|---|
-| FastAPI 后端（memories/sessions/stats API） | ~20min |
-| React + Semi Design 项目搭建 | ~15min |
-| Overview 页面 | ~15min |
-| Memories 页面 | ~20min |
-| Timeline 页面 | ~15min |
-| Settings 页面 | ~10min |
-| 前后端整合 + build 配置 | ~10min |
+| 安装前端依赖 | `npm install` (packages/dashboard/frontend) |
+| 安装后端依赖 | `pip install fastapi uvicorn pyyaml` |
+| 启动验证 | 后端 + 前端联调 |
+| Ant Design 主题定制 | 配置思源黑体 + 浅色主题 |
+| 移除多余 `.js` 文件 | 清理 src 目录中残留的旧 `.js` 文件 |
 
-### Phase 4: 多 Agent 配置
+### Phase 4: 端到端验证
 
-| 任务 | 时间 |
+| 任务 | 说明 |
 |---|---|
-| Claude Code hooks.json 配置 | ~5min |
-| Cursor .cursorrules 模板 | ~5min |
-| OpenClaw MCP 配置 | ~5min |
-| Codex CLI MCP 配置 | ~5min |
+| MCP 写入 | 用 remember 写入测试记忆 |
+| Dashboard 读取 | 确认记忆展示在页面 |
+| Timeline 展示 | 确认会话历史显示 |
 
 ---
 
@@ -448,7 +463,7 @@ Hook 是 shell 命令，不能直接调 MCP 协议。因此需要一个 `agent-m
 |---|---|---|
 | mem0ai | Apache 2.0 | pip 调用，不修改 |
 | FastMCP | MIT | pip 调用 |
-| Semi Design | MIT | npm 依赖 |
+| Ant Design | MIT | npm 依赖 |
 | FastAPI | MIT | pip 调用 |
 | React | MIT | npm 依赖 |
 | MCP 服务代码 | 专有 | 自有版权 |

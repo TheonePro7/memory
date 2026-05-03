@@ -1,0 +1,4 @@
+{
+  "onSessionStart": ["agent-memory recall"],
+  "onSessionEnd": ["agent-memory summarize"]
+}

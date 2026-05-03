@@ -1,0 +1,14 @@
+{
+  "name": "@agent-memory/init",
+  "version": "0.1.0",
+  "description": "一键安装 Agent 记忆系统",
+  "bin": { "agent-memory-init": "./dist/index.js" },
+  "scripts": {
+    "build": "tsc",
+    "prepublish": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "@types/node": "^20.0.0"
+  }
+}
