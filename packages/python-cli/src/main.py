@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "mcp-server" / "src"))
 from backends import mem0_backend, md_backend
+from processor import extract, rerank
 
 
 def _detect_project_id() -> str:
@@ -23,8 +24,16 @@ def _detect_project_id() -> str:
 
 def cmd_recall():
     project_id = _detect_project_id()
-    results = mem0_backend.search("当前项目上下文", project_id=project_id, limit=5)
+    process = "--process" in sys.argv
+
+    results = mem0_backend.search("当前项目上下文", project_id=project_id, limit=10)
     recent = md_backend.get_recent(days=3)
+
+    if process and results:
+        reranked = rerank("当前项目上下文", results, top_n=5)
+        if reranked:
+            results = reranked
+
     output = {"mem0": results, "recent_sessions": recent}
     tmp = Path.home() / ".agent-memory" / "context.json"
     tmp.parent.mkdir(parents=True, exist_ok=True)
@@ -48,11 +57,12 @@ def cmd_summarize():
 
 
 def cmd_remember():
-    """记住一条信息，用法: agent-memory remember <content> [--tags a,b,c] [--project-id name]"""
+    """记住一条信息，用法: agent-memory remember <content> [--tags a,b,c] [--project-id name] [--process]"""
     if len(sys.argv) < 3:
-        print("Usage: agent-memory remember <content> [--tags a,b,c] [--project-id name]", file=sys.stderr)
+        print("Usage: agent-memory remember <content> [--tags a,b,c] [--project-id name] [--process]", file=sys.stderr)
         sys.exit(1)
     content = sys.argv[2]
+    process = "--process" in sys.argv
     tags = []
     if "--tags" in sys.argv:
         idx = sys.argv.index("--tags")
@@ -65,8 +75,20 @@ def cmd_remember():
             project_id = sys.argv[idx + 1]
     if not project_id:
         project_id = _detect_project_id()
-    result = mem0_backend.add(content, tags=tags, project_id=project_id)
-    print(json.dumps(result, ensure_ascii=False))
+
+    entities = actions = llm_summary = None
+    if process:
+        result = extract(content)
+        if result:
+            entities = result.get("entities")
+            actions = result.get("actions")
+            llm_summary = result.get("summary")
+            if result.get("tags"):
+                tags = list(set(tags + result["tags"]))
+
+    r = mem0_backend.add(content, tags=tags, project_id=project_id,
+                          entities=entities, actions=actions, llm_summary=llm_summary)
+    print(json.dumps(r, ensure_ascii=False))
 
 
 def main():

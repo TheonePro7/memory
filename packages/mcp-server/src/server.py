@@ -26,18 +26,32 @@ def remember(
     importance: int = 5,
     auto_verify: bool = False,
     project_id: str | None = None,
+    process: bool = False,
 ) -> dict:
     """记住一条信息。
 
     Args:
         content: 要记住的内容
         tags: 分类标签，如 ["coding-style", "preference"]
-        importance: 重要度 1-10，>8 会后台验证
+        importance: 重要度 1-10
         auto_verify: 后台 LLM 去噪（Hook 自动提取时启用）
         project_id: 项目隔离
+        process: 是否用 LLM 提取实体和摘要
     """
-    result = mem0_backend.add(content, project_id=project_id, tags=tags)
-    audit.log("remember", content_summary=content[:50], backend="mem0", tags=tags)
+    entities = actions = llm_summary = None
+    if process:
+        from processor import extract
+        result = extract(content)
+        if result:
+            entities = result.get("entities")
+            actions = result.get("actions")
+            llm_summary = result.get("summary")
+            if result.get("tags"):
+                tags = list(set(tags + result["tags"]))
+
+    result = mem0_backend.add(content, project_id=project_id, tags=tags,
+                               entities=entities, actions=actions, llm_summary=llm_summary)
+    audit.log("remember", content_summary=content[:50], backend="mem0", tags=tags, process=process)
     return {"id": result.get("id"), "backend": "mem0", "status": "stored"}
 
 
@@ -46,6 +60,7 @@ def recall(
     query: str,
     limit: int = 10,
     project_id: str | None = None,
+    process: bool = False,
 ) -> list[dict]:
     """搜索相关记忆。自动路由到最合适的后端，融合排序后返回。
 
@@ -53,6 +68,7 @@ def recall(
         query: 自然语言查询
         limit: 返回条数
         project_id: 项目隔离
+        process: 是否用 LLM 重排序
     """
     target = route(query)
     results = []
@@ -73,13 +89,18 @@ def recall(
         } for r in mem_results)
     else:
         mem_results = mem0_backend.search(query, limit=limit)
+        if process and mem_results:
+            from processor import rerank
+            reranked = rerank(query, mem_results, top_n=5)
+            if reranked:
+                mem_results = reranked
         results.extend({
             "content": r.get("memory", ""),
             "score": r.get("score", 0),
             "source": "mem0",
         } for r in mem_results)
 
-    audit.log("recall", query_summary=query[:50], backend=target)
+    audit.log("recall", query_summary=query[:50], backend=target, process=process)
     return results[:limit]
 
 

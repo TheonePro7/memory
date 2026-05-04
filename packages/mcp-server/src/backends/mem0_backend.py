@@ -63,6 +63,9 @@ def add(
     user_id: str = "default",
     project_id: str | None = None,
     tags: list[str] | None = None,
+    entities: list[str] | None = None,
+    actions: list[str] | None = None,
+    llm_summary: str | None = None,
 ) -> dict:
     try:
         if not content or not content.strip():
@@ -74,6 +77,12 @@ def add(
             metadata["project_id"] = project_id
         if tags:
             metadata["tags"] = ",".join(tags)
+        if entities:
+            metadata["entities"] = ",".join(entities)
+        if actions:
+            metadata["actions"] = ",".join(actions)
+        if llm_summary:
+            metadata["llm_summary"] = llm_summary
 
         _get_collection().add(
             documents=[content],

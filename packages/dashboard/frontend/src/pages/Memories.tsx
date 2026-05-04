@@ -54,12 +54,27 @@ export default function Memories() {
       title: "内容",
       dataIndex: "memory",
       key: "memory",
-      render: (t: string) => t?.slice(0, 80),
+      render: (t: string, r: Memory) => {
+        const display = r.metadata?.llm_summary || t;
+        return display?.slice(0, 80);
+      },
+    },
+    {
+      title: "实体",
+      key: "entities",
+      width: 160,
+      render: (_: unknown, r: Memory) => {
+        const entities = r.metadata?.entities;
+        if (!entities) return null;
+        return entities.split(",").map((e, i) => (
+          <Tag key={i} color="blue" style={{ marginBottom: 2 }}>{e.trim()}</Tag>
+        ));
+      },
     },
     {
       title: "项目",
       key: "project",
-      width: 140,
+      width: 120,
       render: (_: unknown, r: Memory) => {
         const pid = r.metadata?.project_id;
         return pid ? <Tag icon={<FolderOutlined />}>{pid}</Tag> : null;
@@ -69,14 +84,14 @@ export default function Memories() {
       title: "来源",
       dataIndex: "source",
       key: "source",
-      width: 100,
-      render: (t: string) => <Tag>{t || "mem0"}</Tag>,
+      width: 80,
+      render: (t: string) => <Tag>{t || "chroma"}</Tag>,
     },
     {
       title: "相关性",
       dataIndex: "score",
       key: "score",
-      width: 100,
+      width: 80,
       render: (s: number) => s?.toFixed(2),
     },
   ];
