@@ -1,8 +1,9 @@
 """向量记忆后端 — ChromaDB + fastembed，无外部 LLM 依赖"""
 
 import uuid
-import time
+import os
 import logging
+import threading
 from pathlib import Path
 
 from fastembed import TextEmbedding
@@ -11,32 +12,43 @@ import chromadb
 logger = logging.getLogger(__name__)
 
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
-COLLECTION_NAME = "mem0"
+COLLECTION_NAME = "agent-memory"
 
 _embedder: TextEmbedding | None = None
+_embedder_lock = threading.Lock()
 _collection = None
+_collection_lock = threading.Lock()
 
 
-def _get_chroma_path() -> Path:
+def _get_memory_dir() -> Path:
+    """数据目录：优先 AGENT_MEMORY_DIR 环境变量，否则用 CWD。"""
+    env = os.environ.get("AGENT_MEMORY_DIR")
+    if env:
+        return Path(env) / ".memory" / "chroma"
     return Path.cwd() / ".memory" / "chroma"
 
 
 def _get_embedder() -> TextEmbedding:
     global _embedder
     if _embedder is None:
-        _embedder = TextEmbedding(model_name=MODEL_NAME)
+        with _embedder_lock:
+            if _embedder is None:
+                logger.info("loading embedding model %s (first use, may take a minute)...", MODEL_NAME)
+                _embedder = TextEmbedding(model_name=MODEL_NAME)
     return _embedder
 
 
 def _get_collection():
     global _collection
     if _collection is None:
-        path = str(_get_chroma_path())
-        client = chromadb.PersistentClient(path=path)
-        try:
-            _collection = client.get_collection(COLLECTION_NAME)
-        except Exception:
-            _collection = client.create_collection(COLLECTION_NAME)
+        with _collection_lock:
+            if _collection is None:
+                path = str(_get_memory_dir())
+                client = chromadb.PersistentClient(path=path)
+                try:
+                    _collection = client.get_collection(COLLECTION_NAME)
+                except Exception:
+                    _collection = client.create_collection(COLLECTION_NAME)
     return _collection
 
 
@@ -53,6 +65,8 @@ def add(
     tags: list[str] | None = None,
 ) -> dict:
     try:
+        if not content or not content.strip():
+            return {"id": "", "backend": "mem0", "status": "error", "error": "empty content"}
         memory_id = str(uuid.uuid4())
         vector = _embed(content)
         metadata = {"user_id": user_id}
@@ -80,6 +94,8 @@ def search(
     limit: int = 10,
 ) -> list[dict]:
     try:
+        if not query or not query.strip():
+            return []
         vector = _embed(query)
         where = {"user_id": user_id}
         if project_id:
@@ -132,7 +148,6 @@ def stats(user_id: str = "default") -> dict:
 def list_all(user_id: str = "default", limit: int = 50) -> list[dict]:
     try:
         col = _get_collection()
-        # Chroma count() returns total, then get() with limit
         where = {"user_id": user_id}
         results = col.get(where=where, limit=limit, include=["documents", "metadatas"])
         out = []
