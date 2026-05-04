@@ -91,7 +91,7 @@ def recall(
         mem_results = mem0_backend.search(query, limit=limit)
         if process and mem_results:
             from processor import rerank
-            reranked = rerank(query, mem_results, top_n=5)
+            reranked = rerank(query, mem_results, top_n=min(limit, 5))
             if reranked:
                 mem_results = reranked
         results.extend({

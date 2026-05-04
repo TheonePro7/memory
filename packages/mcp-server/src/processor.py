@@ -3,6 +3,7 @@
 import os
 import json
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,6 @@ def rerank(query: str, results: list[dict], top_n: int = 5) -> list[dict] | None
 
 
 def _call_anthropic(prompt: str) -> dict:
-    import httpx
     resp = httpx.post(
         "https://api.anthropic.com/v1/messages",
         headers={
@@ -90,7 +90,6 @@ def _call_anthropic(prompt: str) -> dict:
 
 
 def _call_openai(prompt: str) -> dict:
-    import httpx
     resp = httpx.post(
         "https://api.openai.com/v1/chat/completions",
         headers={
@@ -98,7 +97,7 @@ def _call_openai(prompt: str) -> dict:
             "content-type": "application/json",
         },
         json={
-            "model": "gpt-4o-mini",
+            "model": os.environ.get("PROCESSOR_MODEL", "gpt-4o-mini"),
             "max_tokens": 512,
             "messages": [{"role": "user", "content": prompt}],
         },

@@ -7,7 +7,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "mcp-server" / "src"))
 from backends import mem0_backend, md_backend
-from processor import extract, rerank
 
 
 def _detect_project_id() -> str:
@@ -30,6 +29,7 @@ def cmd_recall():
     recent = md_backend.get_recent(days=3)
 
     if process and results:
+        from processor import rerank
         reranked = rerank("当前项目上下文", results, top_n=5)
         if reranked:
             results = reranked
@@ -62,7 +62,7 @@ def cmd_remember():
         print("Usage: agent-memory remember <content> [--tags a,b,c] [--project-id name] [--process]", file=sys.stderr)
         sys.exit(1)
     content = sys.argv[2]
-    process = "--process" in sys.argv
+    process = "--process" in sys.argv and sys.argv[2] != "--process"
     tags = []
     if "--tags" in sys.argv:
         idx = sys.argv.index("--tags")
@@ -78,6 +78,7 @@ def cmd_remember():
 
     entities = actions = llm_summary = None
     if process:
+        from processor import extract
         result = extract(content)
         if result:
             entities = result.get("entities")
