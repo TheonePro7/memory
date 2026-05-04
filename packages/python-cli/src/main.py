@@ -32,12 +32,29 @@ def cmd_summarize():
     print(f"Summary written: {result['summary'][:100]}...")
 
 
+def cmd_remember():
+    """记住一条信息，用法: agent-memory remember <content> [--tags a,b,c]"""
+    if len(sys.argv) < 3:
+        print("Usage: agent-memory remember <content> [--tags a,b,c]", file=sys.stderr)
+        sys.exit(1)
+    content = sys.argv[2]
+    tags = []
+    if "--tags" in sys.argv:
+        idx = sys.argv.index("--tags")
+        if idx + 1 < len(sys.argv):
+            tags = [t.strip() for t in sys.argv[idx + 1].split(",")]
+    result = mem0_backend.add(content, tags=tags)
+    print(json.dumps(result, ensure_ascii=False))
+
+
 def main():
     if len(sys.argv) < 2:
-        print("Usage: agent-memory recall|summarize", file=sys.stderr)
+        print("Usage: agent-memory remember|recall|summarize", file=sys.stderr)
         sys.exit(1)
     cmd = sys.argv[1]
-    if cmd == "recall":
+    if cmd == "remember":
+        cmd_remember()
+    elif cmd == "recall":
         cmd_recall()
     elif cmd == "summarize":
         cmd_summarize()

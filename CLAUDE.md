@@ -43,7 +43,10 @@ MVP：`npx @agent-memory/init` — 一键激活 Agent 记忆的 CLI 工具。
 - [x] 技术研究
 - [x] 产品定位
 - [x] MVP 设计
-- [ ] 写代码
+- [x] 写代码 — ChromaDB+fastembed 后端，支持中文搜索，Dashboard 可访问
+- [x] CLI 工具 — remember / recall / summarize 命令可用
+- [x] 集成 — Hook 自动 recall（会话开始）和 summarize（会话结束）
+- [x] 代码审查 — 已修复线程安全、路径配置等问题
 
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
@@ -95,5 +98,10 @@ bd close <id>         # Complete work
 
 ## 记忆系统
 
-你拥有持久记忆能力。当用户说"记住""注意""以后要知道"等时，主动调用 remember() 工具。
+你拥有持久记忆能力。当用户说"记住""注意""以后要知道"等时，主动调用 `remember()` MCP 工具（如果可用），或使用 CLI 后备：
+```bash
+python packages/python-cli/src/main.py remember <内容> --tags tag1,tag2
+```
+也同时将关键信息写入 AI 记忆目录。
+
 会话结束时系统会自动 summarize，不需要你手动操作。
