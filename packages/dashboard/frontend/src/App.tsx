@@ -6,11 +6,13 @@ import {
   DatabaseOutlined,
   ClockCircleOutlined,
   SettingOutlined,
+  CheckSquareOutlined,
 } from "@ant-design/icons";
 import Overview from "./pages/Overview";
 import Memories from "./pages/Memories";
 import Timeline from "./pages/Timeline";
 import Settings from "./pages/Settings";
+import Tasks from "./pages/Tasks";
 
 const { Sider, Content } = Layout;
 
@@ -24,6 +26,7 @@ const menuItems = [
   { key: "overview", icon: <HomeOutlined />, label: "总览" },
   { key: "memories", icon: <DatabaseOutlined />, label: "记忆浏览" },
   { key: "timeline", icon: <ClockCircleOutlined />, label: "时间线" },
+  { key: "tasks", icon: <CheckSquareOutlined />, label: "任务" },
   { key: "settings", icon: <SettingOutlined />, label: "设置" },
 ];
 
@@ -78,6 +81,7 @@ function App() {
     overview: <Overview stats={stats} />,
     memories: <Memories />,
     timeline: <Timeline />,
+    tasks: <Tasks />,
     settings: <Settings />,
   };
 

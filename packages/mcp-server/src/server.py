@@ -143,5 +143,26 @@ def audit_log(days: int = 7) -> list[dict]:
     return audit.query(days=days)
 
 
+@mcp.tool()
+def task_context(project_id: str | None = None) -> dict:
+    """返回当前项目的任务概览（活跃任务 + 最近完成）。
+
+    Args:
+        project_id: 项目标识符，不传则自动检测
+    """
+    from backends.task_backend import get_active_tasks, list_tasks, sync_beads
+    from pathlib import Path
+
+    pid = project_id or Path.cwd().name
+    sync_beads(pid)
+    active = get_active_tasks(project_id=pid)
+    recent = list_tasks(project_id=pid, limit=5)
+    return {
+        "active_tasks": active,
+        "recent_tasks": recent,
+        "total": len(recent),
+    }
+
+
 if __name__ == "__main__":
     mcp.run()
