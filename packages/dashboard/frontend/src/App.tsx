@@ -39,13 +39,17 @@ const themeConfig: ThemeConfig = {
 };
 
 function App() {
-  const [page, setPage] = useState("overview");
   const [collapsed, setCollapsed] = useState(false);
   const [stats, setStats] = useState<Stats>({
     total_memories: 0,
     total_sessions: 0,
     recent_sessions: [],
   });
+
+  // 从 URL hash 初始化页面，刷新后保持当前页面
+  const hashPage = location.hash.replace("#", "") || "overview";
+  const [page, setPage] = useState(hashPage);
+
   const { token } = theme.useToken();
 
   useEffect(() => {
@@ -53,6 +57,21 @@ function App() {
       .then((r) => r.json())
       .then(setStats)
       .catch(() => {});
+  }, []);
+
+  const navigate = (key: string) => {
+    setPage(key);
+    location.hash = key;
+  };
+
+  // 监听浏览器前进/后退
+  useEffect(() => {
+    const onHashChange = () => {
+      const p = location.hash.replace("#", "") || "overview";
+      setPage(p);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
   const pages: Record<string, React.ReactNode> = {
@@ -88,7 +107,7 @@ function App() {
           mode="inline"
           selectedKeys={[page]}
           items={menuItems}
-          onClick={({ key }) => setPage(key)}
+          onClick={({ key }) => navigate(key)}
           style={{ borderRight: 0 }}
         />
       </Sider>
