@@ -1,0 +1,122 @@
+import React, { useEffect, useState } from "react";
+import { ConfigProvider, Layout, Menu, Typography, theme } from "antd";
+import type { ThemeConfig } from "antd";
+import {
+  HomeOutlined,
+  DatabaseOutlined,
+  ClockCircleOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
+import Overview from "./pages/Overview";
+import Memories from "./pages/Memories";
+import Timeline from "./pages/Timeline";
+import Settings from "./pages/Settings";
+
+const { Sider, Content } = Layout;
+
+export interface Stats {
+  total_memories: number;
+  total_sessions: number;
+  recent_sessions: string[];
+}
+
+const menuItems = [
+  { key: "overview", icon: <HomeOutlined />, label: "总览" },
+  { key: "memories", icon: <DatabaseOutlined />, label: "记忆浏览" },
+  { key: "timeline", icon: <ClockCircleOutlined />, label: "时间线" },
+  { key: "settings", icon: <SettingOutlined />, label: "设置" },
+];
+
+const themeConfig: ThemeConfig = {
+  token: {
+    colorPrimary: "#1a1a2e",
+    colorBgContainer: "#ffffff",
+    colorBgLayout: "#f8f9fa",
+    colorBorderSecondary: "#edf0f5",
+    borderRadius: 10,
+    fontFamily: '"Noto Sans CJK SC", "Source Han Sans SC", -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+  },
+};
+
+function App() {
+  const [collapsed, setCollapsed] = useState(false);
+  const [stats, setStats] = useState<Stats>({
+    total_memories: 0,
+    total_sessions: 0,
+    recent_sessions: [],
+  });
+
+  // 从 URL hash 初始化页面，刷新后保持当前页面
+  const hashPage = location.hash.replace("#", "") || "overview";
+  const [page, setPage] = useState(hashPage);
+
+  const { token } = theme.useToken();
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then(setStats)
+      .catch(() => {});
+  }, []);
+
+  const navigate = (key: string) => {
+    setPage(key);
+    location.hash = key;
+  };
+
+  // 监听浏览器前进/后退
+  useEffect(() => {
+    const onHashChange = () => {
+      const p = location.hash.replace("#", "") || "overview";
+      setPage(p);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  const pages: Record<string, React.ReactNode> = {
+    overview: <Overview stats={stats} />,
+    memories: <Memories />,
+    timeline: <Timeline />,
+    settings: <Settings />,
+  };
+
+  return (
+    <ConfigProvider theme={themeConfig}>
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sider
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        style={{ background: token.colorBgContainer }}
+      >
+        <div
+          style={{
+            height: 64,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          }}
+        >
+          <Typography.Title level={4} style={{ margin: 0, color: token.colorPrimary }}>
+            {collapsed ? "AM" : "Agent Memory"}
+          </Typography.Title>
+        </div>
+        <Menu
+          mode="inline"
+          selectedKeys={[page]}
+          items={menuItems}
+          onClick={({ key }) => navigate(key)}
+          style={{ borderRight: 0 }}
+        />
+      </Sider>
+      <Content style={{ padding: 24, overflow: "auto", background: token.colorBgLayout }}>
+        {pages[page] || <Overview stats={stats} />}
+      </Content>
+    </Layout>
+    </ConfigProvider>
+  );
+}
+
+export default App;

@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.beads/
+*.tsbuildinfo
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+
+# Worktrees
+.worktrees/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local memory data
+.memory/
+
+# Brainstorming visual companion
+.superpowers/
+
+# Python build artifacts
+*.egg-info/
