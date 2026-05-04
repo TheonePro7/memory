@@ -7,11 +7,11 @@ router = APIRouter(tags=["memories"])
 
 
 @router.get("/memories")
-def list_memories(q: str = "", limit: int = 50):
+def list_memories(q: str = "", project_id: str | None = None, limit: int = 50):
     if q:
-        results = mem0_backend.search(q, limit=limit)
+        results = mem0_backend.search(q, project_id=project_id, limit=limit)
     else:
-        results = mem0_backend.list_all(limit=limit)
+        results = mem0_backend.list_all(project_id=project_id, limit=limit)
     return {"results": results, "total": len(results)}
 
 

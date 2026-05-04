@@ -30,8 +30,11 @@ python packages/dashboard/backend/src/main.py
 # 记住一条信息
 python packages/python-cli/src/main.py remember "内容" --tags tag1,tag2
 
-# 搜索记忆
+# 搜索当前项目的记忆（自动按项目隔离）
 python packages/python-cli/src/main.py recall
+
+# 指定其他项目
+python packages/python-cli/src/main.py remember "内容" --project-id other-project
 ```
 
 ## 系统架构
@@ -48,22 +51,39 @@ memory/
 ├── scripts/
 │   ├── setup.ps1         # Windows 安装脚本
 │   └── setup.sh          # Linux/macOS 安装脚本
-└── .claude/
-    ├── settings.local.json   # MCP 服务配置
-    └── hooks.json            # 自动 recall/summarize
+├── .claude/
+│   ├── settings.local.json   # MCP 服务配置
+│   └── hooks.json            # 自动 recall/summarize
+└── ~/.agent-memory/chroma/   # 中央向量数据库（跨项目共享）
 ```
+
+### 跨项目记忆隔离
+
+所有项目的记忆存储在同一个中央库 `~/.agent-memory/chroma/` 中，通过 `project_id` 做逻辑隔离：
+
+- **Hook 自动 recall** — 运行在哪个项目目录下，就只拉取该项目的记忆
+- **Dashboard 筛选** — 按项目筛选、浏览全部或单个项目的记忆
+- **手动指定** — CLI 支持 `--project-id` 参数覆盖自动检测
+
+不同项目（如主项目和 Obsidian 插件）使用同一套记忆系统但互不干扰。
 
 ## 技术栈
 
 - **向量存储：** ChromaDB + fastembed（`paraphrase-multilingual-mpnet-base-v2`）
 - **语义搜索：** 支持中文、英文等多语言
-- **MCP 协议：** FastMCP 3.x，通过 Claude Code MCP 集成
+- **MCP 协议：** FastMCP，通过 Claude Code MCP 集成
 - **前端：** React 18 + Ant Design 6 + Vite
 - **后端：** FastAPI + uvicorn
 
 ## 隐私
 
-完全本地运行，数据存储在项目目录的 `.memory/` 下。不依赖任何外部 API。
+核心记忆功能完全本地运行，数据存储在 `~/.agent-memory/chroma/`。会话摘要（summarize）可选调用 Anthropic/OpenAI API，不提供 API Key 时自动回退到本地截断模式。
+
+## 存储配置
+
+| 环境变量 | 作用 | 默认值 |
+|---|---|---|
+| `AGENT_MEMORY_DIR` | 指定 ChromaDB 存储目录 | `~/.agent-memory/chroma/` |
 
 ---
 
@@ -96,7 +116,8 @@ npx @agent-memory/init
 ## 状态
 
 - [x] MVP 核心后端 — ChromaDB+fastembed，支持中文搜索
-- [x] Dashboard — 记忆浏览、统计
-- [x] CLI — remember / recall / summarize
+- [x] Dashboard — 记忆浏览、统计、项目筛选
+- [x] CLI — remember / recall / summarize，支持 project_id
 - [x] MCP 集成 — Claude Code 自动记忆
+- [x] 跨项目共享 — 中央库 + project_id 隔离
 - [ ] TypeScript CLI（`npx @agent-memory/init`）
