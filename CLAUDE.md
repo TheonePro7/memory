@@ -38,15 +38,25 @@ MVP：`npx @agent-memory/init` — 一键激活 Agent 记忆的 CLI 工具。
 
 ## 当前状态
 
-- [x] 市场调研
-- [x] 竞品扫描
-- [x] 技术研究
-- [x] 产品定位
-- [x] MVP 设计
-- [x] 写代码 — ChromaDB+fastembed 后端，支持中文搜索，Dashboard 可访问
+### v0.1 — MVP 基础 ✓
+- [x] 市场调研 / 竞品扫描 / 技术研究 / 产品定位
+- [x] ChromaDB+fastembed 后端，支持中文搜索，Dashboard 可访问
 - [x] CLI 工具 — remember / recall / summarize 命令可用
-- [x] 集成 — Hook 自动 recall（会话开始）和 summarize（会话结束）
-- [x] 代码审查 — 已修复线程安全、路径配置等问题
+- [x] Hook 自动 recall（会话开始）和 summarize（会话结束）
+
+### v0.2 — LLM 记忆加工 ✓
+- [x] entity extraction（remember 时自动提取实体）
+- [x] search reranking（recall 时 LLM 重排序）
+- [x] 用户自带 API Key（ANTHROPIC_API_KEY / OPENAI_API_KEY）
+- [x] `--process` 参数在 remember / recall 中可选启用
+
+### v0.3 — 任务记忆 ✓
+- [x] SQLite 三表存储（tasks / task_events / task_artifacts）
+- [x] beads 增量同步（只读，不写 beads）
+- [x] CLI `task list|show|start|done|block` 子命令
+- [x] MCP `task_context` 工具（活跃任务注入）
+- [x] Dashboard 任务看板页（统计 + 表格 + 事件流）
+- [x] recall / summarize 自动同步 beads + 活跃任务
 
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->

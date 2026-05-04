@@ -1,5 +1,7 @@
 """任务 API"""
 
+import os
+
 from fastapi import APIRouter
 from backends import task_backend
 
@@ -41,8 +43,8 @@ def update_task_status(task_id: str, status: str):
 
 
 @router.post("/tasks/{task_id}/events")
-def add_task_event(task_id: str, type: str, content: str):
-    t = task_backend.add_event(task_id, type, content)
+def add_task_event(task_id: str, event_type: str, content: str):
+    t = task_backend.add_event(task_id, event_type, content)
     if not t:
         return {"error": "not found"}, 404
     return t
@@ -50,6 +52,5 @@ def add_task_event(task_id: str, type: str, content: str):
 
 @router.post("/tasks/sync-beads")
 def sync_beads(project_id: str = "default"):
-    import os
     result = task_backend.sync_beads(project_id, project_path=os.getcwd())
     return result
