@@ -21,11 +21,11 @@ _collection_lock = threading.Lock()
 
 
 def _get_memory_dir() -> Path:
-    """数据目录：优先 AGENT_MEMORY_DIR 环境变量，否则用 CWD。"""
+    """数据目录：优先 AGENT_MEMORY_DIR 环境变量，否则 ~/.agent-memory/chroma/（跨项目共享）。"""
     env = os.environ.get("AGENT_MEMORY_DIR")
     if env:
         return Path(env) / ".memory" / "chroma"
-    return Path.cwd() / ".memory" / "chroma"
+    return Path.home() / ".agent-memory" / "chroma"
 
 
 def _get_embedder() -> TextEmbedding:
@@ -63,6 +63,9 @@ def add(
     user_id: str = "default",
     project_id: str | None = None,
     tags: list[str] | None = None,
+    entities: list[str] | None = None,
+    actions: list[str] | None = None,
+    llm_summary: str | None = None,
 ) -> dict:
     try:
         if not content or not content.strip():
@@ -74,6 +77,12 @@ def add(
             metadata["project_id"] = project_id
         if tags:
             metadata["tags"] = ",".join(tags)
+        if entities:
+            metadata["entities"] = ",".join(entities)
+        if actions:
+            metadata["actions"] = ",".join(actions)
+        if llm_summary:
+            metadata["llm_summary"] = llm_summary
 
         _get_collection().add(
             documents=[content],
@@ -97,9 +106,9 @@ def search(
         if not query or not query.strip():
             return []
         vector = _embed(query)
-        where = {"user_id": user_id}
+        where: dict = {"user_id": user_id}
         if project_id:
-            where["project_id"] = project_id
+            where = {"$and": [{"user_id": user_id}, {"project_id": project_id}]}
 
         results = _get_collection().query(
             query_embeddings=[vector],
@@ -135,20 +144,27 @@ def delete(memory_id: str, user_id: str = "default") -> bool:
         return False
 
 
-def stats(user_id: str = "default") -> dict:
+def stats(user_id: str = "default", project_id: str | None = None) -> dict:
     try:
         col = _get_collection()
-        count = col.count()
+        where: dict = {"user_id": user_id}
+        if project_id:
+            where = {"$and": [{"user_id": user_id}, {"project_id": project_id}]}
+        # count() 不支持 where 过滤，用 get 取 id 数量
+        results = col.get(where=where, limit=10000, include=[])
+        count = len(results.get("ids", []))
         return {"total": count, "user_id": user_id}
     except Exception as e:
         logger.error("stats failed: %s", e)
         return {"total": 0, "user_id": user_id, "error": str(e)}
 
 
-def list_all(user_id: str = "default", limit: int = 50) -> list[dict]:
+def list_all(user_id: str = "default", project_id: str | None = None, limit: int = 50) -> list[dict]:
     try:
         col = _get_collection()
-        where = {"user_id": user_id}
+        where: dict = {"user_id": user_id}
+        if project_id:
+            where = {"$and": [{"user_id": user_id}, {"project_id": project_id}]}
         results = col.get(where=where, limit=limit, include=["documents", "metadatas"])
         out = []
         ids = results.get("ids", [])
