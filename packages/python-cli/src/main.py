@@ -42,7 +42,7 @@ def cmd_recall():
     output = {"mem0": results, "recent_sessions": recent, "active_tasks": active_tasks}
     tmp = Path.home() / ".agent-memory" / "context.json"
     tmp.parent.mkdir(parents=True, exist_ok=True)
-    tmp.write_text(json.dumps(output, ensure_ascii=False, indent=2))
+    tmp.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Context written to {tmp}")
     if active_tasks:
         for t in active_tasks:
