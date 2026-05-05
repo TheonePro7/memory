@@ -24,22 +24,22 @@ if (!COMMANDS.has(command)) {
     case "--help":
     case "help":
       console.log(`Usage:
-  npx @agent-memory/init [path] [--dry-run]
-  npx @agent-memory/remove [path] [--dry-run]
+  npx @ivanston/init [path] [--dry-run]
+  npx @ivanston/remove [path] [--dry-run]
 
 Options:
   --dry-run  检测环境但不写任何文件
   path       目标项目路径（默认当前目录）
 
 Examples:
-  npx @agent-memory/init                     当前目录安装
-  npx @agent-memory/init ./my-project        指定项目
-  npx @agent-memory/init --dry-run           仅检测环境
-  npx @agent-memory/remove                   卸载当前项目`);
+  npx @ivanston/init                     当前目录安装
+  npx @ivanston/init ./my-project        指定项目
+  npx @ivanston/init --dry-run           仅检测环境
+  npx @ivanston/remove                   卸载当前项目`);
       break;
     default:
       console.error(`Unknown command: ${command}`);
-      console.error("Usage: npx @agent-memory/init [path] [--dry-run]");
+      console.error("Usage: npx @ivanston/init [path] [--dry-run]");
       process.exit(1);
   }
 }

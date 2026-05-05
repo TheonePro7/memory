@@ -1,5 +1,5 @@
 {
-  "name": "@agent-memory/init",
+  "name": "@ivanston/init",
   "version": "0.1.0",
   "description": "一键激活 Agent 记忆系统 — npx @agent-memory/init",
   "bin": {
