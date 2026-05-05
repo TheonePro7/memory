@@ -51,10 +51,11 @@ npx @agent-memory/remove ./my-project     # 从指定项目卸载
 
 | 版本 | 内容 | 状态 |
 |------|------|------|
-| v0.1 | 基础记忆 — ChromaDB+fastembed 后端，remember/recall | ✅ |
-| v0.2 | 记忆智能「加工」🔜 — LLM 提取实体/动作/摘要，搜索结果重排序 | 🔄 开发中 |
+| v0.1 | 基础记忆 — ChromaDB+fastembed 后端，remember/recall/summarize | ✅ |
+| v0.2 | 记忆智能「加工」— LLM 提取实体/动作/摘要，搜索结果重排序 | ✅ |
 | v0.3 | 任务记忆 — SQLite CRUD，beads 同步，Dashboard 任务面板 | ✅ |
-| v0.4 | TypeScript CLI — `npx @agent-memory/init` 一键安装 | ✅ 待发布 |
+| v0.4 | TypeScript CLI — `npx @agent-memory/init` 一键安装 | ✅ |
+| v0.5 | 架构重构 — core.py 共享层、CLI 命令注册、死代码清理、52 个测试 | ✅ |
 | — | npm 发布 @agent-memory/init | ⬜ |
 | — | PyPI 发布 agent-memory-mcp | ⬜ |
 
@@ -78,16 +79,23 @@ npx @agent-memory/remove ./my-project     # 从指定项目卸载
 ┌─────────────────────────────────────────────────────────┐
 │                agent-memory-mcp (Python)                  │
 │                                                           │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐ │
-│  │ remember()  │  │  recall()   │  │  summarize()     │ │
-│  │ MCP Tool    │  │  MCP Tool   │  │  MCP Tool        │ │
-│  └──────┬──────┘  └──────┬───────┘  └────────┬─────────┘ │
-│         │                │                    │           │
-│         ▼                ▼                    ▼           │
-│  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐ │
-│  │  ChromaDB   │  │  SQLite      │  │  processor.py    │ │
-│  │  向量存储    │  │  任务存储     │  │  LLM 提取/重排   │ │
-│  └─────────────┘  └──────────────┘  └──────────────────┘ │
+│  ┌─────────────────────────────────────────────────────┐  │
+│  │                    MCP 层 (server.py)                  │  │
+│  │   remember()   recall()   summarize()   forget()     │  │
+│  │   memory_stats()   audit_log()   task_context()      │  │
+│  └──────────────────────┬──────────────────────────────┘  │
+│                         │                                  │
+│  ┌──────────────────────▼──────────────────────────────┐  │
+│  │                 核心层 (core.py)                       │  │
+│  │  remember() → processor.extract() → mem0_backend.add │  │
+│  │  recall()   → mem0_backend.search() → processor.rerank│  │
+│  │  summarize()→ generate_summary() → md/sync/beads     │  │
+│  └────────┬─────────┬──────────┬───────────────────────┘  │
+│           │         │          │                          │
+│  ┌────────▼──┐ ┌───▼──────┐ ┌─▼───────────┐             │
+│  │ ChromaDB  │ │ SQLite   │ │processor.py │             │
+│  │ 向量存储   │ │ 任务存储  │ │ LLM 提取/重排│             │
+│  └───────────┘ └──────────┘ └─────────────┘             │
 │         │                │                    │           │
 │         ▼                ▼                    ▼           │
 │  ┌─────────────────────────────────────────────────────┐  │
@@ -126,9 +134,11 @@ npx @agent-memory/remove ./my-project     # 从指定项目卸载
 ```
 会话结束 → hooks.json onSessionEnd → summarize
   → 1. 读取本次会话对话摘要
-  → 2. 提取涉及的任务（含"完成""修复""实现"关键词）
-  → 3. 更新任务状态
-  → 4. 保存总结到 ChromaDB
+  → 2. LLM 判断是否完成了某个任务（task_completed 字段）
+  → 3. 关联活跃任务
+  → 4. 保存总结到 Markdown
+  → 5. 提取事实写入 ChromaDB
+  → 6. 同步 beads
 ```
 
 ### 2.3 配置架构
@@ -181,21 +191,27 @@ memory/
 │   │   ├── tsconfig.json
 │   │   └── .npmignore
 │   │
-│   ├── python-cli/              Python CLI 工具
-│   │   └── src/
-│   │       └── main.py          remember/recall/summarize + task 命令
-│   │
-│   ├── mcp-server/              MCP 服务器
+│   ├── mcp-server/              MCP 服务器 + CLI 入口
 │   │   ├── src/
-│   │   │   ├── server.py        MCP 入口（remember/recall/summarize/task_context）
+│   │   │   ├── server.py        MCP 入口（薄胶水层，调 core.py）
+│   │   │   ├── cli.py           CLI 入口（代理到 core.py）
+│   │   │   ├── core.py          核心业务逻辑层（纯函数，无 MCP/CLI 依赖）
 │   │   │   ├── processor.py     LLM 实体/动作/摘要提取 + 重排序
+│   │   │   ├── summarize.py     会话摘要生成（LLM + fallback）
+│   │   │   ├── audit.py         操作审计日志
 │   │   │   ├── backends/
 │   │   │   │   ├── mem0_backend.py   ChromaDB 向量存储
-│   │   │   │   └── task_backend.py   SQLite 任务存储
+│   │   │   │   ├── task_backend.py   SQLite 任务存储（含 beads 同步）
+│   │   │   │   └── md_backend.py     Markdown 文件后端
 │   │   │   └── routers/         （Dashboard API 路由）
 │   │   ├── tests/
-│   │   │   ├── test_task_backend.py  任务 CRUD + beads 同步测试
-│   │   │   └── test_cli.py          CLI 命令测试
+│   │   │   ├── test_cli.py            CLI 命令测试（7 个）
+│   │   │   ├── test_processor.py      LLM 提取/重排测试（13 个）
+│   │   │   ├── test_task_backend.py   任务 CRUD + beads 同步（16 个）
+│   │   │   ├── test_mem0_backend.py   向量后端测试（6 个）
+│   │   │   ├── test_md_backend.py     Markdown 后端测试（4 个）
+│   │   │   ├── test_summarize.py      摘要测试（3 个）
+│   │   │   └── test_audit.py          审计日志测试（3 个）
 │   │   └── pyproject.toml
 │   │
 │   └── dashboard/               Web 管理界面
@@ -334,41 +350,46 @@ npx vitest run tests/install.test.ts
 
 ---
 
-## 5. Python CLI（packages/python-cli）
+## 5. CLI 命令（agent-memory）
 
 ### 5.1 职责
 
-Python 编写的 CLI 工具，提供 remember/recall/summarize 命令及任务管理。
+Python 编写的 CLI 工具，作为 `agent-memory` 命令注册在系统 PATH 中（通过 pip entry_points），供 hooks 和手动调用。
 
 ### 5.2 命令参考
 
+安装后（pip install agent-memory-mcp）可直接使用：
 ```bash
 # 记忆操作
-python packages/python-cli/src/main.py remember <内容> [--tags tag1,tag2] [--process]
-python packages/python-cli/src/main.py recall [查询] [--top-k 5]
-python packages/python-cli/src/main.py summarize
+agent-memory remember <内容> [--tags tag1,tag2] [--process]
+agent-memory recall [--process]
+agent-memory summarize
 
 # 任务操作
-python packages/python-cli/src/main.py task list [--status todo|in_progress|done]
-python packages/python-cli/src/main.py task show <id>
-python packages/python-cli/src/main.py task start <id>
-python packages/python-cli/src/main.py task done [id]    # 无 id 时自动查找当前任务
-python packages/python-cli/src/main.py task block <id> [--reason ...]
+agent-memory task list [--status todo|in_progress|done]
+agent-memory task show <id>
+agent-memory task start <标题>
+agent-memory task done [id]    # 无 id 时自动完成当前活跃任务
+agent-memory task block <id> <原因>
 ```
 
-### 5.3 关键逻辑
+### 5.3 实现位置
+
+原 `packages/python-cli/src/main.py` 在 v0.5 重构中合并入 `packages/mcp-server`，现在位于 `packages/mcp-server/src/cli.py`。通过 pyproject.toml entry_points 注册为 `agent-memory` 命令。
+
+### 5.4 关键逻辑
 
 **`cmd_recall()`** — 会话开始自动执行：
-1. 调用 `sync_beads()` 同步 beads 任务
-2. 查询 `get_active_tasks()` 获取进行中/阻塞的任务
-3. 语义搜索 ChromaDB 获取相关记忆
-4. 写入 `context.json`（UTF-8 编码），供 Claude Code 读取
+1. 调用 `core.recall()` 搜索相关记忆
+2. 获取最近会话记录（md_backend）
+3. 同步 beads + 查询活跃任务
+4. 写入 `context.{pid}.json`（PID 后缀防竞态），供 Claude Code 读取
+5. 打印活跃任务到终端
 
 **`cmd_summarize()`** — 会话结束自动执行：
-1. 读取对话摘要
-2. 扫描含"完成""修复""实现"等关键词的消息
-3. 识别涉及的任务并更新状态
-4. 保存总结到 ChromaDB
+1. 读取 `current_session.txt`
+2. 调用 `core.summarize()`（LLM 摘要 + 事实提取 + beads 同步）
+3. 检查 LLM 返回的 `task_completed` 字段，若为 true 则关联活跃任务
 
 ---
 
@@ -376,15 +397,24 @@ python packages/python-cli/src/main.py task block <id> [--reason ...]
 
 ### 6.1 职责
 
-通过 MCP 协议暴露记忆和任务能力给 Claude Code。
+通过 MCP 协议暴露记忆和任务能力给 Claude Code。采用三层架构：
+
+```
+MCP 层 (server.py)   — 薄胶水，MCP 协议适配 + 审计日志
+核心层 (core.py)     — 操作链路编排 + 业务规则
+后端层 (backends/)   — 存储实现（向量/SQLite/Markdown）
+```
 
 ### 6.2 MCP 工具
 
 | 工具 | 参数 | 说明 |
 |------|------|------|
-| `remember` | `content`, `tags`, `process` | 存储记忆（可选 LLM 加工） |
-| `recall` | `query`, `project_id`, `top_k` | 语义搜索记忆 |
-| `summarize` | `summary` | 会话总结并更新任务 |
+| `remember` | `content`, `tags`, `importance`, `auto_verify`, `project_id`, `process` | 存储记忆（可选 LLM 加工），委托 core.remember() |
+| `recall` | `query`, `limit`, `project_id`, `process` | 语义搜索记忆，委托 core.recall() |
+| `summarize` | `context` | 会话总结并更新任务，委托 core.summarize() |
+| `forget` | `memory_id` | 通过 ID 精确删除一条记忆，调用 mem0_backend.delete() |
+| `memory_stats` | — | 获取记忆统计 |
+| `audit_log` | `days` | 查询操作审计日志 |
 | `task_context` | `project_id` | 获取当前任务上下文（活跃+最近任务） |
 
 ### 6.3 后端存储
@@ -396,6 +426,7 @@ python packages/python-cli/src/main.py task block <id> [--reason ...]
 - metadata：user_id, project_id, tags, created_at
 - 搜索：支持 `$and` 语法的多条件过滤
 - 距离函数：cosine
+- 提供：`add()`, `search()`, `delete()`, `stats()`, `list_all()`
 
 **task_backend.py — SQLite 结构化存储：**
 
@@ -404,8 +435,9 @@ python packages/python-cli/src/main.py task block <id> [--reason ...]
 - 字段：id, title, status, priority, tags, project_id, source, source_id
 - 状态流转：todo → in_progress → done（含 blocked 中间态）
 - beads 同步：单向增量读取 `.beads/issues.jsonl`，BOM 安全（utf-8-sig）
+- 所有 CRUD 函数使用 `contextlib.closing` 确保连接异常安全
 
-### 6.4 测试
+### 6.4 测试（共 52 个）
 
 ```bash
 cd packages/mcp-server
@@ -413,11 +445,14 @@ cd packages/mcp-server
 # 运行全部测试
 pytest
 
-# 任务后端测试（共 16 个）
-pytest tests/test_task_backend.py -v
-
-# CLI 测试（共 7 个）
-pytest tests/test_cli.py -v
+# 按文件
+pytest tests/test_task_backend.py -v   # 16 个 — 任务 CRUD + beads 同步
+pytest tests/test_processor.py -v      # 13 个 — LLM 提取/重排
+pytest tests/test_cli.py -v            # 7 个 — CLI 命令
+pytest tests/test_mem0_backend.py -v   # 6 个 — 向量后端
+pytest tests/test_md_backend.py -v     # 4 个 — Markdown 后端
+pytest tests/test_summarize.py -v      # 3 个 — 摘要生成
+pytest tests/test_audit.py -v          # 3 个 — 审计日志
 ```
 
 ---
@@ -512,8 +547,9 @@ refactor: 重构
 ### 8.3 测试要求
 
 - CLI 安装器：vitest（8 个测试）
-- MCP 服务器：pytest（23 个测试）
+- MCP 服务器：pytest（52 个测试，覆盖全部后端和核心层）
 - TDD 原则：先写失败测试，再实现，再验证通过
+- 覆盖率目标：核心模块（core.py + backends + processor）80%+
 
 ---
 
@@ -586,3 +622,17 @@ CLI 和 MCP 服务器版本号独立但建议同步发布。CLI 安装时从 PyP
 ### 10.5 为什么是 BOM 安全（utf-8-sig）？
 
 Windows 上 PowerShell 的 `Set-Content` 和部分编辑器会写入 BOM 头，导致 JSON 和 JSONL 解析失败。使用 `utf-8-sig` 自动跳过 BOM，确保跨平台兼容。
+
+### 10.6 为什么引入 core.py 共享层？
+
+v0.5 重构前 server.py 和 main.py 各自实现了 remember/recall/summarize 的完整逻辑，出现代码重复。将业务逻辑抽离到 core.py 后：
+- MCP 和 CLI 层各 10 行左右胶水代码
+- 业务逻辑有唯一的命名入口和测试入口
+- 新增后端 API 时只需改 core.py 一处
+
+### 10.7 为什么将 python-cli 合并入 mcp-server 包？
+
+main.py 早已通过 `sys.path.insert(0, ...)` 强耦合 mcp-server 的内部模块，物理分离是假的。合并为一个 pip 包后：
+- 无需 hack sys.path
+- entry_points 注册 `agent-memory` 命令
+- 减少一个包目录的维护成本
