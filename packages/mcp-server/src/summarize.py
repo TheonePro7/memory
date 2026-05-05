@@ -21,6 +21,7 @@ def _fallback(text: str) -> dict:
     return {
         "summary": text[:2000] if len(text) > 2000 else text,
         "facts": [],
+        "task_completed": False,
         "model": "fallback-truncation",
     }
 
@@ -38,8 +39,8 @@ def _with_claude(text: str) -> dict:
             "max_tokens": 1024,
             "messages": [{
                 "role": "user",
-                "content": f"为以下编码会话生成结构化摘要。"
-                           f"输出 JSON: {{\"summary\": \"...\", \"facts\": [\"...\"]}}\n\n{text[:8000]}",
+                "content": f"为以下编码会话生成结构化摘要，并判断会话是否完成了某个任务。"
+                           f"输出 JSON: {{\"summary\": \"...\", \"facts\": [\"...\"], \"task_completed\": true/false}}\n\n{text[:8000]}",
             }],
         },
         timeout=30,
@@ -59,8 +60,8 @@ def _with_openai(text: str) -> dict:
             "max_tokens": 1024,
             "messages": [{
                 "role": "user",
-                "content": f"为以下编码会话生成结构化摘要。"
-                           f"输出 JSON: {{\"summary\": \"...\", \"facts\": [\"...\"]}}\n\n{text[:8000]}",
+                "content": f"为以下编码会话生成结构化摘要，并判断会话是否完成了某个任务。"
+                           f"输出 JSON: {{\"summary\": \"...\", \"facts\": [\"...\"], \"task_completed\": true/false}}\n\n{text[:8000]}",
             }],
         },
         timeout=30,
@@ -83,6 +84,7 @@ def _parse_llm_response(data: dict) -> dict:
         return {
             "summary": result.get("summary", content[:500]),
             "facts": result.get("facts", []),
+            "task_completed": result.get("task_completed", False),
             "model": "llm",
         }
     except (json.JSONDecodeError, KeyError, IndexError):

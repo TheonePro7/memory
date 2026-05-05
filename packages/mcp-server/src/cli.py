@@ -1,5 +1,6 @@
 """Agent 记忆系统 Hook CLI — 通过 shell 命令供 Hook 调用"""
 
+import os
 import sys
 import json
 import subprocess
@@ -35,7 +36,8 @@ def cmd_recall():
     active_tasks = get_active_tasks(project_id=project_id)
 
     output = {"mem0": results, "recent_sessions": recent, "active_tasks": active_tasks}
-    tmp = Path.home() / ".agent-memory" / "context.json"
+    pid = os.getpid()
+    tmp = Path.home() / ".agent-memory" / f"context.{pid}.json"
     tmp.parent.mkdir(parents=True, exist_ok=True)
     tmp.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Context written to {tmp}")
@@ -55,10 +57,9 @@ def cmd_summarize():
     # 使用 core.summarize() 进行核心总结（LLM + 持久化 + 事实提取 + beads 同步）
     result = core_summarize(text, project_id=project_id)
 
-    # 任务关联：检查关键词并关联活跃任务
+    # 任务关联：使用 LLM 判断的任务完成状态
     from backends.task_backend import get_active_tasks, add_event
-    summary_text = result["summary"]
-    if "完成" in summary_text or "修复" in summary_text or "实现" in summary_text:
+    if result.get("task_completed"):
         active = get_active_tasks(project_id=project_id)
         for t in active:
             if t["status"] == "in_progress":

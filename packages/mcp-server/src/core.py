@@ -74,4 +74,9 @@ def summarize(context: str, project_id: str | None = None) -> dict:
     for fact in result.get("facts", []):
         mem0_backend.add(fact, tags=["auto-extracted"], project_id=project_id)
     sync_beads(project_id or "default")
-    return {"summary": result["summary"], "file": path, "facts": result.get("facts", [])}
+    return {
+        "summary": result["summary"],
+        "file": path,
+        "facts": result.get("facts", []),
+        "task_completed": result.get("task_completed", False),
+    }
