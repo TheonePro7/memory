@@ -77,7 +77,7 @@ CLI 层 (cli.py)        — Shell 命令适配，薄胶水
 | v0.2 | 记忆智能加工 — LLM 实体提取、搜索重排序、processor.py | ✅ 完成 | 2026-05-05 |
 | v0.3 | 任务记忆 — SQLite CRUD、beads 同步、Dashboard 任务面板 | ✅ 完成 | — |
 | v0.4 | TypeScript CLI — `npx @agent-memory/init` 一键安装 | ✅ 完成 | 2026-05-05 |
-| v0.5 | 架构重构 — core.py 抽取、CLI 命令注册、死代码清理、测试覆盖 | 🔜 设计阶段 | — |
+| v0.5 | 架构重构 — core.py 抽取、CLI 命令注册、死代码清理、测试覆盖 | ✅ 完成 | 2026-05-05 |
 | — | npm 发布 @agent-memory/init | ⬜ 待做 | — |
 | — | PyPI 发布 agent-memory-mcp | ⬜ 待做 | — |
 
@@ -118,13 +118,14 @@ refactor: 重构
 
 | 任务 | 状态 | beads ID |
 |------|------|----------|
-| core.py 抽取共享层 | 🔜 待做 | — |
-| CLI 命令注册 + 包重构 | 🔜 待做 | — |
-| 路由死代码清理 + forget() 实现 | 🔜 待做 | — |
-| SQLite 连接管理修复 | 🔜 待做 | — |
-| context.json 竞态修复 | 🔜 待做 | — |
-| summarize 任务关联增强 | 🔜 待做 | — |
-| 补充测试覆盖 | 🔜 待做 | — |
+| core.py 抽取共享层 | ✅ 完成 | — |
+| server.py 使用 core.py | ✅ 完成 | — |
+| CLI 命令注册 + 包重构 | ✅ 完成 | — |
+| 路由死代码清理 + forget() 实现 | ✅ 完成 | — |
+| SQLite 连接管理修复 | ✅ 完成 | — |
+| context.json 竞态修复 | ✅ 完成 | — |
+| summarize 任务关联增强 | ✅ 完成 | — |
+| 补充测试覆盖 | ✅ 完成 | — |
 
 ---
 
@@ -132,14 +133,14 @@ refactor: 重构
 
 | ID | 问题 | 严重度 | 引入版本 | 状态 |
 |----|------|--------|----------|------|
-| T01 | server.py 和 main.py 代码重复 | 🔴 严重 | v0.1 | 🔄 修复中 (v0.5) |
-| T02 | agent-memory CLI 命令未注册 | 🔴 严重 | v0.1 | 🔄 修复中 (v0.5) |
-| T03 | router.route() 死代码 | 🟡 中等 | v0.1 | 🔄 修复中 (v0.5) |
-| T04 | forget() 空实现 | 🟡 中等 | v0.1 | 🔄 修复中 (v0.5) |
-| T05 | SQLite 连接异常时泄漏 | 🟡 中等 | v0.3 | 🔄 修复中 (v0.5) |
-| T06 | context.json 多会话竞态 | 🟢 轻微 | v0.1 | 🔄 修复中 (v0.5) |
-| T07 | summarize 关键字匹配脆弱 | 🟢 轻微 | v0.1 | 🔄 修复中 (v0.5) |
-| T08 | 测试覆盖不全（mem0/md/audit/summarize） | 🟡 中等 | v0.1 | 🔄 修复中 (v0.5) |
+| T01 | server.py 和 main.py 代码重复 | 🔴 严重 | v0.1 | ✅ 已修复 (v0.5) |
+| T02 | agent-memory CLI 命令未注册 | 🔴 严重 | v0.1 | ✅ 已修复 (v0.5) |
+| T03 | router.route() 死代码 | 🟡 中等 | v0.1 | ✅ 已修复 (v0.5) |
+| T04 | forget() 空实现 | 🟡 中等 | v0.1 | ✅ 已修复 (v0.5) |
+| T05 | SQLite 连接异常时泄漏 | 🟡 中等 | v0.3 | ✅ 已修复 (v0.5) |
+| T06 | context.json 多会话竞态 | 🟢 轻微 | v0.1 | ✅ 已修复 (v0.5) |
+| T07 | summarize 关键字匹配脆弱 | 🟢 轻微 | v0.1 | ✅ 已修复 (v0.5) |
+| T08 | 测试覆盖不全（mem0/md/audit/summarize） | 🟡 中等 | v0.1 | ✅ 已修复 (v0.5) |
 | T09 | ChromaDB $and 语法版本依赖 | 🟢 轻微 | v0.1 | ⬜ 待做 |
 | T10 | stats count 10000 条上限 | 🟢 轻微 | v0.1 | ⬜ 待做 |
 
@@ -201,8 +202,8 @@ refactor: 重构
 
 | 步骤 | 状态 | 说明 |
 |------|------|------|
-| 包结构 | 🔄 | v0.5 重构后确定最终结构 |
-| pyproject.toml | 🔄 | 需要加 entry_points |
+| 包结构 | ✅ | src 布局，packages.find 配置就绪 |
+| pyproject.toml | ✅ | 已添加 entry_points（agent-memory = "cli:main"）|
 | 构建验证 | ⬜ | 待执行 |
 | PyPI 发布 | ⬜ | 待执行 |
 
@@ -212,7 +213,19 @@ refactor: 重构
 
 每行格式：`YYYY-MM-DD | [类型] 描述 | commit hash`
 
-### 2026-05-05
+### 2026-05-05 (v0.5 重构)
+
+| 类型 | 描述 | Commit |
+|------|------|--------|
+| test | 新增 16 个测试覆盖 mem0/md/audit/summarize 后端 | aae639b |
+| fix | context.json PID 后缀 + summarize LLM task_completed 判断 | 3fb9969 |
+| fix | SQLite 连接使用 contextlib.closing 防泄漏 | d88ebca |
+| feat | 删除 router.py，实现 forget() MCP tool | 14bc797 |
+| refactor | python-cli 合并入 mcp-server 作为 cli.py，添加 entry_points | 2d008c9 |
+| refactor | server.py 调用 core.py 作为薄胶水层 | 3027e1b |
+| feat | 新增 core.py 共享业务逻辑层 | 37e2a5a |
+
+### 2026-05-05 (v0.2-v0.4)
 
 | 类型 | 描述 | Commit |
 |------|------|--------|
