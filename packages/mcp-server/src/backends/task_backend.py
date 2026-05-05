@@ -5,6 +5,7 @@ import uuid
 import os
 import json
 import logging
+from contextlib import closing
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -67,10 +68,9 @@ def _get_conn() -> sqlite3.Connection:
 
 
 def _init_db():
-    conn = _get_conn()
-    conn.executescript(SCHEMA)
-    conn.commit()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        conn.executescript(SCHEMA)
+        conn.commit()
 
 
 def _now() -> str:
@@ -90,32 +90,29 @@ def create_task(
     _init_db()
     tid = str(uuid.uuid4())
     now = _now()
-    conn = _get_conn()
-    conn.execute(
-        "INSERT INTO tasks (id, source, source_id, title, status, priority, project_id, tags, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, 'todo', ?, ?, ?, ?, ?)",
-        (tid, source, source_id, title, priority, project_id,
-         ",".join(tags) if tags else None, now, now),
-    )
-    conn.commit()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        conn.execute(
+            "INSERT INTO tasks (id, source, source_id, title, status, priority, project_id, tags, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, 'todo', ?, ?, ?, ?, ?)",
+            (tid, source, source_id, title, priority, project_id,
+             ",".join(tags) if tags else None, now, now),
+        )
+        conn.commit()
     return get_task(tid)
 
 
 def get_task(task_id: str) -> dict | None:
     _init_db()
-    conn = _get_conn()
-    row = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
-    if not row:
-        conn.close()
-        return None
-    events = conn.execute(
-        "SELECT * FROM task_events WHERE task_id=? ORDER BY created_at", (task_id,)
-    ).fetchall()
-    artifacts = conn.execute(
-        "SELECT * FROM task_artifacts WHERE task_id=? ORDER BY created_at", (task_id,)
-    ).fetchall()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        row = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if not row:
+            return None
+        events = conn.execute(
+            "SELECT * FROM task_events WHERE task_id=? ORDER BY created_at", (task_id,)
+        ).fetchall()
+        artifacts = conn.execute(
+            "SELECT * FROM task_artifacts WHERE task_id=? ORDER BY created_at", (task_id,)
+        ).fetchall()
     return {
         "id": row["id"],
         "source": row["source"],
@@ -138,82 +135,76 @@ def list_tasks(
     limit: int = 50,
 ) -> list[dict]:
     _init_db()
-    conn = _get_conn()
-    where = "WHERE project_id=?"
-    params = [project_id]
-    if status:
-        where += " AND status=?"
-        params.append(status)
-    rows = conn.execute(
-        f"SELECT * FROM tasks {where} ORDER BY updated_at DESC LIMIT ?",
-        params + [limit],
-    ).fetchall()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        where = "WHERE project_id=?"
+        params = [project_id]
+        if status:
+            where += " AND status=?"
+            params.append(status)
+        rows = conn.execute(
+            f"SELECT * FROM tasks {where} ORDER BY updated_at DESC LIMIT ?",
+            params + [limit],
+        ).fetchall()
     return [dict(r) for r in rows]
 
 
 def update_status(task_id: str, status: str) -> dict | None:
     _init_db()
     now = _now()
-    conn = _get_conn()
-    old = conn.execute("SELECT status FROM tasks WHERE id=?", (task_id,)).fetchone()
-    if not old:
-        conn.close()
-        return None
-    conn.execute(
-        "UPDATE tasks SET status=?, updated_at=? WHERE id=?",
-        (status, now, task_id),
-    )
-    conn.execute(
-        "INSERT INTO task_events (task_id, type, content, created_at) VALUES (?, 'status_change', ?, ?)",
-        (task_id, f"{old['status']} → {status}", now),
-    )
-    conn.commit()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        old = conn.execute("SELECT status FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if not old:
+            return None
+        conn.execute(
+            "UPDATE tasks SET status=?, updated_at=? WHERE id=?",
+            (status, now, task_id),
+        )
+        conn.execute(
+            "INSERT INTO task_events (task_id, type, content, created_at) VALUES (?, 'status_change', ?, ?)",
+            (task_id, f"{old['status']} → {status}", now),
+        )
+        conn.commit()
     return get_task(task_id)
 
 
 def add_event(task_id: str, event_type: str, content: str) -> dict | None:
     _init_db()
     now = _now()
-    conn = _get_conn()
-    conn.execute(
-        "UPDATE tasks SET updated_at=? WHERE id=?", (now, task_id),
-    )
-    conn.execute(
-        "INSERT INTO task_events (task_id, type, content, created_at) VALUES (?, ?, ?, ?)",
-        (task_id, event_type, content, now),
-    )
-    conn.commit()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        conn.execute(
+            "UPDATE tasks SET updated_at=? WHERE id=?", (now, task_id),
+        )
+        conn.execute(
+            "INSERT INTO task_events (task_id, type, content, created_at) VALUES (?, ?, ?, ?)",
+            (task_id, event_type, content, now),
+        )
+        conn.commit()
     return get_task(task_id)
 
 
 def add_artifact(task_id: str, kind: str, reference: str) -> dict | None:
     _init_db()
     now = _now()
-    conn = _get_conn()
-    conn.execute(
-        "UPDATE tasks SET updated_at=? WHERE id=?", (now, task_id),
-    )
-    conn.execute(
-        "INSERT INTO task_artifacts (task_id, kind, reference, created_at) VALUES (?, ?, ?, ?)",
-        (task_id, kind, reference, now),
-    )
-    conn.commit()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        conn.execute(
+            "UPDATE tasks SET updated_at=? WHERE id=?", (now, task_id),
+        )
+        conn.execute(
+            "INSERT INTO task_artifacts (task_id, kind, reference, created_at) VALUES (?, ?, ?, ?)",
+            (task_id, kind, reference, now),
+        )
+        conn.commit()
     return get_task(task_id)
 
 
 def get_active_tasks(project_id: str = "default") -> list[dict]:
     """返回 in_progress 和 blocked 的任务，用于 session start 注入。"""
     _init_db()
-    conn = _get_conn()
-    rows = conn.execute(
-        "SELECT * FROM tasks WHERE project_id=? AND status IN ('in_progress','blocked') ORDER BY updated_at DESC",
-        (project_id,),
-    ).fetchall()
-    conn.close()
+    with closing(_get_conn()) as conn:
+        rows = conn.execute(
+            "SELECT * FROM tasks WHERE project_id=? AND status IN ('in_progress','blocked') ORDER BY updated_at DESC",
+            (project_id,),
+        ).fetchall()
     return [dict(r) for r in rows]
 
 
@@ -248,67 +239,66 @@ def sync_beads(project_id: str, project_path: str | Path = ".") -> dict:
         return {"synced": 0, "total": 0, "error": "no beads file found"}
 
     _init_db()
-    conn = _get_conn()
     synced = 0
     total = 0
 
     raw = beads_file.read_text(encoding="utf-8-sig")
-    for line in raw.strip().split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            issue = json.loads(line)
-            total += 1
-            source_id = issue.get("id") or str(issue.get("number", ""))
-            if not source_id:
+    with closing(_get_conn()) as conn:
+        for line in raw.strip().split("\n"):
+            line = line.strip()
+            if not line:
                 continue
+            try:
+                issue = json.loads(line)
+                total += 1
+                source_id = issue.get("id") or str(issue.get("number", ""))
+                if not source_id:
+                    continue
 
-            existing = conn.execute(
-                "SELECT id, status FROM tasks WHERE source='beads' AND source_id=? AND project_id=?",
-                (str(source_id), project_id),
-            ).fetchone()
+                existing = conn.execute(
+                    "SELECT id, status FROM tasks WHERE source='beads' AND source_id=? AND project_id=?",
+                    (str(source_id), project_id),
+                ).fetchone()
 
-            title = issue.get("title", issue.get("description", "untitled"))
-            status = STATUS_MAP.get(issue.get("status", ""), "todo")
-            tags = issue.get("tags", [])
+                title = issue.get("title", issue.get("description", "untitled"))
+                status = STATUS_MAP.get(issue.get("status", ""), "todo")
+                tags = issue.get("tags", [])
 
-            if existing:
-                if existing["status"] != status:
+                if existing:
+                    if existing["status"] != status:
+                        now = _now()
+                        conn.execute(
+                            "UPDATE tasks SET status=?, updated_at=? WHERE id=?",
+                            (status, now, existing["id"]),
+                        )
+                        conn.execute(
+                            "INSERT INTO task_events (task_id, type, content, created_at) "
+                            "VALUES (?, 'status_change', ?, ?)",
+                            (existing["id"], f"{existing['status']} → {status}", now),
+                        )
+                else:
+                    tid = str(uuid.uuid4())
                     now = _now()
                     conn.execute(
-                        "UPDATE tasks SET status=?, updated_at=? WHERE id=?",
-                        (status, now, existing["id"]),
+                        "INSERT INTO tasks (id, source, source_id, title, status, priority, project_id, tags, created_at, updated_at) "
+                        "VALUES (?, 'beads', ?, ?, 'todo', 'medium', ?, ?, ?, ?)",
+                        (tid, str(source_id), title, project_id,
+                         ",".join(tags) if isinstance(tags, list) else None, now, now),
                     )
-                    conn.execute(
-                        "INSERT INTO task_events (task_id, type, content, created_at) "
-                        "VALUES (?, 'status_change', ?, ?)",
-                        (existing["id"], f"{existing['status']} → {status}", now),
-                    )
-            else:
-                tid = str(uuid.uuid4())
-                now = _now()
-                conn.execute(
-                    "INSERT INTO tasks (id, source, source_id, title, status, priority, project_id, tags, created_at, updated_at) "
-                    "VALUES (?, 'beads', ?, ?, 'todo', 'medium', ?, ?, ?, ?)",
-                    (tid, str(source_id), title, project_id,
-                     ",".join(tags) if isinstance(tags, list) else None, now, now),
-                )
-                if status != "todo":
-                    conn.execute(
-                        "UPDATE tasks SET status=?, updated_at=? WHERE id=?",
-                        (status, now, tid),
-                    )
-                    conn.execute(
-                        "INSERT INTO task_events (task_id, type, content, created_at) "
-                        "VALUES (?, 'status_change', ?, ?)",
-                        (tid, f"beads init: todo → {status}", now),
-                    )
-            synced += 1
-        except (json.JSONDecodeError, KeyError) as e:
-            logger.warning("beads sync: skip invalid line: %s", e)
-            continue
+                    if status != "todo":
+                        conn.execute(
+                            "UPDATE tasks SET status=?, updated_at=? WHERE id=?",
+                            (status, now, tid),
+                        )
+                        conn.execute(
+                            "INSERT INTO task_events (task_id, type, content, created_at) "
+                            "VALUES (?, 'status_change', ?, ?)",
+                            (tid, f"beads init: todo → {status}", now),
+                        )
+                synced += 1
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning("beads sync: skip invalid line: %s", e)
+                continue
 
-    conn.commit()
-    conn.close()
+        conn.commit()
     return {"synced": synced, "total": total}
