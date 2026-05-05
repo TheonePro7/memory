@@ -1,14 +1,27 @@
 {
   "name": "@agent-memory/init",
   "version": "0.1.0",
-  "description": "一键安装 Agent 记忆系统",
-  "bin": { "agent-memory-init": "./dist/index.js" },
+  "description": "一键激活 Agent 记忆系统 — npx @agent-memory/init",
+  "bin": {
+    "agent-memory-init": "./dist/index.js"
+  },
+  "files": ["dist", "src/vendor"],
   "scripts": {
     "build": "tsc",
-    "prepublish": "npm run build"
+    "prepublish": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
+    "@types/node": "^20.19.39",
     "typescript": "^5.5.0",
-    "@types/node": "^20.0.0"
+    "vitest": "^4.1.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TheonePro7/memory.git"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
