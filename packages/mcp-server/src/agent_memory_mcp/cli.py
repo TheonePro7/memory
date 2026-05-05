@@ -6,8 +6,8 @@ import json
 import subprocess
 from pathlib import Path
 
-from backends import mem0_backend, md_backend
-from core import recall as core_recall, remember as core_remember, summarize as core_summarize
+from agent_memory_mcp.backends import mem0_backend, md_backend
+from agent_memory_mcp.core import recall as core_recall, remember as core_remember, summarize as core_summarize
 
 
 def _detect_project_id() -> str:
@@ -31,7 +31,7 @@ def cmd_recall():
     recent = md_backend.get_recent(days=3)
 
     # 同步 beads + 获取活跃任务
-    from backends.task_backend import sync_beads, get_active_tasks
+    from agent_memory_mcp.backends.task_backend import sync_beads, get_active_tasks
     sync_beads(project_id)
     active_tasks = get_active_tasks(project_id=project_id)
 
@@ -58,7 +58,7 @@ def cmd_summarize():
     result = core_summarize(text, project_id=project_id)
 
     # 任务关联：使用 LLM 判断的任务完成状态
-    from backends.task_backend import get_active_tasks, add_event
+    from agent_memory_mcp.backends.task_backend import get_active_tasks, add_event
     if result.get("task_completed"):
         active = get_active_tasks(project_id=project_id)
         for t in active:
@@ -77,7 +77,7 @@ def cmd_task():
         _print_task_usage()
         sys.exit(1)
     sub = sys.argv[2]
-    from backends.task_backend import (
+    from agent_memory_mcp.backends.task_backend import (
         create_task, list_tasks, get_task,
         update_status, add_event, add_artifact,
         sync_beads, get_active_tasks, detect_beads,

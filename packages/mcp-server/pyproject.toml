@@ -15,7 +15,8 @@ dependencies = [
 ]
 
 [project.scripts]
-agent-memory = "cli:main"
+agent-memory = "agent_memory_mcp.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["agent_memory_mcp*"]

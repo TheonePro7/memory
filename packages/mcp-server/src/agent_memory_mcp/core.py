@@ -1,9 +1,9 @@
 """核心业务逻辑层 — 不依赖 MCP 协议或 CLI argv"""
 
-from processor import extract
-from backends import mem0_backend, md_backend
-from summarize import generate_summary
-from backends.task_backend import sync_beads
+from agent_memory_mcp.processor import extract
+from agent_memory_mcp.backends import mem0_backend, md_backend
+from agent_memory_mcp.summarize import generate_summary
+from agent_memory_mcp.backends.task_backend import sync_beads
 import logging
 
 logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ def recall(
     """记忆搜索：搜索 → 可选重排序 → 格式化。"""
     results = mem0_backend.search(query, limit=limit, project_id=project_id)
     if process and results:
-        from processor import rerank
+        from agent_memory_mcp.processor import rerank
         reranked = rerank(query, results, top_n=min(limit, 5))
         if reranked:
             results = reranked

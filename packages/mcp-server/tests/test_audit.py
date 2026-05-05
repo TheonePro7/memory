@@ -2,7 +2,7 @@ import sys
 import pytest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-import audit
+from agent_memory_mcp import audit
 
 
 class TestAudit:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-import cli
+from agent_memory_mcp import cli
 import pytest
 
 
@@ -22,14 +22,14 @@ class TestCLI:
         cli.cmd_task()
 
     def test_task_show(self, monkeypatch: pytest.MonkeyPatch):
-        from backends.task_backend import create_task
+        from agent_memory_mcp.backends.task_backend import create_task
         t = create_task("show测试", project_id="test-cli")
         monkeypatch.setattr(sys, "argv", ["agent-memory", "task", "show", t["id"]])
         cli.cmd_task()
 
     def test_task_done_no_id(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(sys, "argv", ["agent-memory", "task", "done"])
-        from backends.task_backend import create_task, update_status, get_task
+        from agent_memory_mcp.backends.task_backend import create_task, update_status, get_task
         t = create_task("done测试", project_id="test-cli")
         update_status(t["id"], "in_progress")
         monkeypatch.setattr(cli, "_detect_project_id", lambda: "test-cli")
@@ -37,7 +37,7 @@ class TestCLI:
         assert get_task(t["id"])["status"] == "done"
 
     def test_task_block(self, monkeypatch: pytest.MonkeyPatch):
-        from backends.task_backend import create_task, get_task
+        from agent_memory_mcp.backends.task_backend import create_task, get_task
         t = create_task("block测试", project_id="test-cli")
         monkeypatch.setattr(sys, "argv", ["agent-memory", "task", "block", t["id"], "依赖未就绪"])
         cli.cmd_task()

@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from processor import extract, rerank, _parse_json_response
+from agent_memory_mcp.processor import extract, rerank, _parse_json_response
 
 
 class TestParseJsonResponse:
@@ -64,7 +64,7 @@ class TestExtract:
             "content": [{"text": '{"entities": ["AI"], "summary": "test", "tags": ["ml"], "is_useful": true}'}]
         }
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}):
-            with patch("processor._call_anthropic", return_value=mock_response):
+            with patch("agent_memory_mcp.processor._call_anthropic", return_value=mock_response):
                 result = extract("test content")
                 assert result == {"entities": ["AI"], "summary": "test", "tags": ["ml"], "is_useful": True}
 
@@ -73,7 +73,7 @@ class TestExtract:
             "choices": [{"message": {"content": '{"entities": ["AI"]}'}}]
         }
         with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test", "ANTHROPIC_API_KEY": ""}):
-            with patch("processor._call_openai", return_value=mock_response):
+            with patch("agent_memory_mcp.processor._call_openai", return_value=mock_response):
                 result = extract("test content")
                 assert result == {"entities": ["AI"]}
 
@@ -104,7 +104,7 @@ class TestRerank:
         ]
 
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}):
-            with patch("processor._call_anthropic", return_value=mock_response):
+            with patch("agent_memory_mcp.processor._call_anthropic", return_value=mock_response):
                 reranked = rerank("query", results, top_n=2)
                 assert reranked is not None
                 assert len(reranked) == 2
@@ -119,7 +119,7 @@ class TestRerank:
             "content": [{"text": json.dumps([{"index": 99, "reason": "out of range"}])}]
         }
         with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}):
-            with patch("processor._call_openai", return_value=mock_response):
+            with patch("agent_memory_mcp.processor._call_openai", return_value=mock_response):
                 reranked = rerank("query", [{"memory": "only item"}], top_n=5)
                 # All indices invalid → 回退到 None
                 assert reranked is None

@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from backends.task_backend import (
+from agent_memory_mcp.backends.task_backend import (
     create_task, get_task, list_tasks, update_status,
     add_event, add_artifact, get_active_tasks,
     sync_beads, detect_beads,

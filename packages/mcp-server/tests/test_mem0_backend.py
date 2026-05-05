@@ -2,7 +2,7 @@ import sys
 import pytest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from backends import mem0_backend
+from agent_memory_mcp.backends import mem0_backend
 
 
 class TestMem0Backend:
