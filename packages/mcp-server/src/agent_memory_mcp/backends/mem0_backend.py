@@ -157,26 +157,3 @@ def stats(user_id: str = "default", project_id: str | None = None) -> dict:
     except Exception as e:
         logger.error("stats failed: %s", e)
         return {"total": 0, "user_id": user_id, "error": str(e)}
-
-
-def list_all(user_id: str = "default", project_id: str | None = None, limit: int = 50) -> list[dict]:
-    try:
-        col = _get_collection()
-        where: dict = {"user_id": user_id}
-        if project_id:
-            where = {"$and": [{"user_id": user_id}, {"project_id": project_id}]}
-        results = col.get(where=where, limit=limit, include=["documents", "metadatas"])
-        out = []
-        ids = results.get("ids", [])
-        docs = results.get("documents", [])
-        metas = results.get("metadatas", [])
-        for i in range(len(ids)):
-            out.append({
-                "id": ids[i],
-                "memory": docs[i] if i < len(docs) else "",
-                "metadata": metas[i] if i < len(metas) else {},
-            })
-        return out
-    except Exception as e:
-        logger.error("list_all failed: %s", e)
-        return []

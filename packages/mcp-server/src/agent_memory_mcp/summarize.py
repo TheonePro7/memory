@@ -2,7 +2,10 @@
 
 import os
 import json
+import logging
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 def generate_summary(conversation_text: str) -> dict:
@@ -14,6 +17,7 @@ def generate_summary(conversation_text: str) -> dict:
             return _with_claude(conversation_text)
         return _with_openai(conversation_text)
     except Exception:
+        logger.exception("LLM summarize failed, falling back to truncation")
         return _fallback(conversation_text)
 
 
@@ -45,6 +49,7 @@ def _with_claude(text: str) -> dict:
         },
         timeout=30,
     )
+    resp.raise_for_status()
     return _parse_llm_response(resp.json())
 
 
@@ -66,6 +71,7 @@ def _with_openai(text: str) -> dict:
         },
         timeout=30,
     )
+    resp.raise_for_status()
     return _parse_llm_response(resp.json())
 
 

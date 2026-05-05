@@ -39,10 +39,11 @@ class TestMem0Backend:
         assert "total" in stats
         assert isinstance(stats["total"], int)
 
-    def test_list_all(self):
-        """list_all 返回记忆列表"""
-        items = mem0_backend.list_all(project_id="test-mem0", limit=5)
-        assert isinstance(items, list)
+    def test_stats_with_project(self):
+        """stats 支持 project_id 过滤"""
+        stats = mem0_backend.stats(project_id="test-mem0")
+        assert "total" in stats
+        assert "user_id" in stats
 
     def test_add_empty_content(self):
         """空内容返回 error 状态"""

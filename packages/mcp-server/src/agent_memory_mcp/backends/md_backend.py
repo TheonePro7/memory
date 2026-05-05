@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 
 def _get_memory_dir() -> Path:
-    p = Path.cwd() / "memory"
+    p = Path.home() / ".agent-memory" / "sessions"
     p.mkdir(parents=True, exist_ok=True)
     return p
 

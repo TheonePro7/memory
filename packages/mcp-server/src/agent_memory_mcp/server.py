@@ -1,12 +1,9 @@
 """Agent 记忆系统 MCP 服务入口"""
 
-import sys
-from pathlib import Path
-
 from fastmcp import FastMCP
 
 from agent_memory_mcp.backends import mem0_backend
-from agent_memory_mcp.core import remember as core_remember, recall as core_recall, summarize as core_summarize
+from agent_memory_mcp.core import remember as core_remember, recall as core_recall, summarize as core_summarize, detect_project_id
 from agent_memory_mcp import audit
 import logging
 
@@ -103,9 +100,8 @@ def task_context(project_id: str | None = None) -> dict:
         project_id: 项目标识符，不传则自动检测
     """
     from agent_memory_mcp.backends.task_backend import get_active_tasks, list_tasks, sync_beads
-    from pathlib import Path
 
-    pid = project_id or Path.cwd().name
+    pid = project_id or detect_project_id()
     sync_beads(pid)
     active = get_active_tasks(project_id=pid)
     recent = list_tasks(project_id=pid, limit=5)

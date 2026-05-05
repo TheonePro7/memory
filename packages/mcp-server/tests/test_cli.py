@@ -32,7 +32,7 @@ class TestCLI:
         from agent_memory_mcp.backends.task_backend import create_task, update_status, get_task
         t = create_task("done测试", project_id="test-cli")
         update_status(t["id"], "in_progress")
-        monkeypatch.setattr(cli, "_detect_project_id", lambda: "test-cli")
+        monkeypatch.setattr(cli, "detect_project_id", lambda: "test-cli")
         cli.cmd_task()
         assert get_task(t["id"])["status"] == "done"
 

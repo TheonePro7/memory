@@ -3,27 +3,14 @@
 import os
 import sys
 import json
-import subprocess
 from pathlib import Path
 
 from agent_memory_mcp.backends import mem0_backend, md_backend
-from agent_memory_mcp.core import recall as core_recall, remember as core_remember, summarize as core_summarize
-
-
-def _detect_project_id() -> str:
-    """从 git root 目录名推断项目标识符，非 git 目录回退到 CWD 名。"""
-    try:
-        root = subprocess.check_output(
-            ["git", "rev-parse", "--show-toplevel"],
-            stderr=subprocess.DEVNULL, text=True,
-        ).strip()
-        return Path(root).name
-    except Exception:
-        return Path.cwd().name
+from agent_memory_mcp.core import recall as core_recall, remember as core_remember, summarize as core_summarize, detect_project_id
 
 
 def cmd_recall():
-    project_id = _detect_project_id()
+    project_id = detect_project_id()
     process = "--process" in sys.argv
 
     # 使用 core.recall() 进行记忆搜索（包括重排序）
@@ -52,7 +39,7 @@ def cmd_summarize():
         print("No session context found", file=sys.stderr)
         return
     text = ctx_file.read_text(encoding="utf-8")
-    project_id = _detect_project_id()
+    project_id = detect_project_id()
 
     # 使用 core.summarize() 进行核心总结（LLM + 持久化 + 事实提取 + beads 同步）
     result = core_summarize(text, project_id=project_id)
@@ -82,7 +69,7 @@ def cmd_task():
         update_status, add_event, add_artifact,
         sync_beads, get_active_tasks, detect_beads,
     )
-    pid = _detect_project_id()
+    pid = detect_project_id()
 
     if sub == "list":
         status = None
@@ -186,7 +173,7 @@ def cmd_remember():
         if idx + 1 < len(sys.argv):
             project_id = sys.argv[idx + 1]
     if not project_id:
-        project_id = _detect_project_id()
+        project_id = detect_project_id()
 
     # 使用 core.remember() 进行记忆存储（包括可选的 LLM 加工）
     r = core_remember(content, tags=tags, project_id=project_id, process=process)

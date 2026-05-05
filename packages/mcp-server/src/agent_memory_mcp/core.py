@@ -1,5 +1,8 @@
 """核心业务逻辑层 — 不依赖 MCP 协议或 CLI argv"""
 
+import subprocess
+from pathlib import Path
+
 from agent_memory_mcp.processor import extract
 from agent_memory_mcp.backends import mem0_backend, md_backend
 from agent_memory_mcp.summarize import generate_summary
@@ -7,6 +10,18 @@ from agent_memory_mcp.backends.task_backend import sync_beads
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def detect_project_id() -> str:
+    """从 git root 目录名推断项目标识符，非 git 目录回退到 CWD 名。"""
+    try:
+        root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            stderr=subprocess.DEVNULL, text=True,
+        ).strip()
+        return Path(root).name
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return Path.cwd().name
 
 
 def _format_mem0_result(r: dict) -> dict:

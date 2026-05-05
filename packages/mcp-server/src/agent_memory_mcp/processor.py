@@ -86,6 +86,7 @@ def _call_anthropic(prompt: str) -> dict:
         },
         timeout=15,
     )
+    resp.raise_for_status()
     return resp.json()
 
 
@@ -103,6 +104,7 @@ def _call_openai(prompt: str) -> dict:
         },
         timeout=15,
     )
+    resp.raise_for_status()
     return resp.json()
 
 

@@ -1,8 +1,8 @@
 {
   "onSessionStart": [
-    "python packages\\mcp-server\\src\\cli.py recall"
+    "python packages\\mcp-server\\src\\agent_memory_mcp\\cli.py recall"
   ],
   "onSessionEnd": [
-    "python packages\\mcp-server\\src\\cli.py summarize"
+    "python packages\\mcp-server\\src\\agent_memory_mcp\\cli.py summarize"
   ]
 }
