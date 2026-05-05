@@ -1,38 +1,95 @@
-{
-  "permissions": {
-    "defaultMode": "dontAsk",
-    "allow": [
-      "Bash(*)",
-      "PowerShell(*)",
-      "Read",
-      "Edit",
-      "Write",
-      "Glob",
-      "Grep"
-    ]
-  },
-  "hooks": {
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "command": "bd prime",
-            "type": "command"
-          }
-        ],
-        "matcher": ""
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "command": "bd prime",
-            "type": "command"
-          }
-        ],
-        "matcher": ""
-      }
-    ]
-  }
+﻿{
+    "hooks":  {
+                  "PreToolUse":  [
+                                     {
+                                         "hooks":  [
+                                                       {
+                                                           "command":  "powershell -NoProfile -File .claude/hooks/guardrails-git.ps1",
+                                                           "timeout":  5,
+                                                           "shell":  "powershell",
+                                                           "type":  "command",
+                                                           "statusMessage":  "devflow: checking git safety..."
+                                                       }
+                                                   ],
+                                         "matcher":  "Bash"
+                                     },
+                                     {
+                                         "hooks":  [
+                                                       {
+                                                           "command":  "bash .claude/hooks/guardrails-git.sh",
+                                                           "timeout":  5,
+                                                           "shell":  "bash",
+                                                           "type":  "command",
+                                                           "statusMessage":  "devflow: checking git safety..."
+                                                       }
+                                                   ],
+                                         "matcher":  "Bash"
+                                     }
+                                 ],
+                  "PreCompact":  [
+                                     {
+                                         "hooks":  [
+                                                       {
+                                                           "command":  "bd prime",
+                                                           "type":  "command"
+                                                       }
+                                                   ],
+                                         "matcher":  ""
+                                     }
+                                 ],
+                  "SessionStart":  [
+                                       {
+                                           "hooks":  [
+                                                         {
+                                                             "command":  "powershell -File .claude/hooks/devflow-init-check.ps1",
+                                                             "timeout":  10,
+                                                             "shell":  "powershell",
+                                                             "type":  "command",
+                                                             "statusMessage":  "devflow: checking project state..."
+                                                         }
+                                                     ]
+                                       },
+                                       {
+                                           "hooks":  [
+                                                         {
+                                                             "command":  "bash .claude/hooks/devflow-init-check.sh",
+                                                             "timeout":  10,
+                                                             "shell":  "bash",
+                                                             "type":  "command",
+                                                             "statusMessage":  "devflow: checking project state..."
+                                                         }
+                                                     ]
+                                       },
+                                       {
+                                           "hooks":  [
+                                                         {
+                                                             "command":  "bd prime",
+                                                             "type":  "command"
+                                                         }
+                                                     ],
+                                           "matcher":  ""
+                                       }
+                                   ]
+              },
+    "permissions":  {
+                        "additionalDirectories":  [
+                                                      "C:\\Users\\Administrator\\.claude\\skills\\superpowers-brainstorming",
+                                                      "C:\\Users\\Administrator\\.claude\\skills\\superpowers-writing-plans",
+                                                      "C:\\Users\\Administrator\\.claude\\skills\\superpowers-using-git-worktrees",
+                                                      "C:\\Users\\Administrator\\.claude\\skills\\superpowers-subagent-driven-development",
+                                                      "C:\\Users\\Administrator\\.claude\\skills\\superpowers-requesting-code-review",
+                                                      "C:\\Users\\Administrator\\.claude\\skills\\superpowers-finishing-a-development-branch",
+                                                      "C:\\Users\\Administrator\\.claude\\skills\\superpowers-test-driven-development"
+                                                  ],
+                        "defaultMode":  "dontAsk",
+                        "allow":  [
+                                      "Bash(*)",
+                                      "PowerShell(*)",
+                                      "Read",
+                                      "Edit",
+                                      "Write",
+                                      "Glob",
+                                      "Grep"
+                                  ]
+                    }
 }
