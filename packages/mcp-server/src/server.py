@@ -75,15 +75,15 @@ def summarize(context: str) -> dict:
 
 
 @mcp.tool()
-def forget(pattern: str, backend: str | None = None) -> dict:
-    """删除匹配的记忆。
+def forget(memory_id: str) -> dict:
+    """通过 ID 删除一条记忆。
 
     Args:
-        pattern: 内容关键词
-        backend: "mem0" | "markdown" | None（全部）
+        memory_id: 要删除的记忆 ID
     """
-    audit.log("forget", pattern=pattern)
-    return {"deleted": 0, "status": "not_implemented", "message": "Forget is not yet implemented. Memory data is preserved."}
+    ok = mem0_backend.delete(memory_id)
+    audit.log("forget", memory_id=memory_id, success=ok)
+    return {"deleted": 1 if ok else 0, "status": "deleted" if ok else "not_found"}
 
 
 @mcp.tool()
