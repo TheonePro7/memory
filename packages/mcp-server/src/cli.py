@@ -5,8 +5,8 @@ import json
 import subprocess
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "mcp-server" / "src"))
 from backends import mem0_backend, md_backend
+from core import recall as core_recall, remember as core_remember, summarize as core_summarize
 
 
 def _detect_project_id() -> str:
@@ -25,14 +25,9 @@ def cmd_recall():
     project_id = _detect_project_id()
     process = "--process" in sys.argv
 
-    results = mem0_backend.search("当前项目上下文", project_id=project_id, limit=10)
+    # 使用 core.recall() 进行记忆搜索（包括重排序）
+    results = core_recall("当前项目上下文", project_id=project_id, limit=10, process=process)
     recent = md_backend.get_recent(days=3)
-
-    if process and results:
-        from processor import rerank
-        reranked = rerank("当前项目上下文", results, top_n=5)
-        if reranked:
-            results = reranked
 
     # 同步 beads + 获取活跃任务
     from backends.task_backend import sync_beads, get_active_tasks
@@ -55,16 +50,13 @@ def cmd_summarize():
         print("No session context found", file=sys.stderr)
         return
     text = ctx_file.read_text(encoding="utf-8")
-    from summarize import generate_summary
-    result = generate_summary(text)
-    md_backend.append_summary(result["summary"])
     project_id = _detect_project_id()
-    for fact in result.get("facts", []):
-        mem0_backend.add(fact, tags=["auto-extracted"], project_id=project_id)
 
-    # 任务提取：同步 beads + 关联活跃任务
-    from backends.task_backend import sync_beads, get_active_tasks, add_event
-    sync_beads(project_id)
+    # 使用 core.summarize() 进行核心总结（LLM + 持久化 + 事实提取 + beads 同步）
+    result = core_summarize(text, project_id=project_id)
+
+    # 任务关联：检查关键词并关联活跃任务
+    from backends.task_backend import get_active_tasks, add_event
     summary_text = result["summary"]
     if "完成" in summary_text or "修复" in summary_text or "实现" in summary_text:
         active = get_active_tasks(project_id=project_id)
@@ -195,19 +187,8 @@ def cmd_remember():
     if not project_id:
         project_id = _detect_project_id()
 
-    entities = actions = llm_summary = None
-    if process:
-        from processor import extract
-        result = extract(content)
-        if result:
-            entities = result.get("entities")
-            actions = result.get("actions")
-            llm_summary = result.get("summary")
-            if result.get("tags"):
-                tags = list(set(tags + result["tags"]))
-
-    r = mem0_backend.add(content, tags=tags, project_id=project_id,
-                          entities=entities, actions=actions, llm_summary=llm_summary)
+    # 使用 core.remember() 进行记忆存储（包括可选的 LLM 加工）
+    r = core_remember(content, tags=tags, project_id=project_id, process=process)
     print(json.dumps(r, ensure_ascii=False))
 
 
