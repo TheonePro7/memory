@@ -150,8 +150,8 @@ def stats(user_id: str = "default", project_id: str | None = None) -> dict:
         where: dict = {"user_id": user_id}
         if project_id:
             where = {"$and": [{"user_id": user_id}, {"project_id": project_id}]}
-        # count() 不支持 where 过滤，用 get 取 id 数量
-        results = col.get(where=where, limit=10000, include=[])
+        # 不设 limit 以获取准确总数（原 limit=10000 导致超限时计数偏低）
+        results = col.get(where=where, include=[])
         count = len(results.get("ids", []))
         return {"total": count, "user_id": user_id}
     except Exception as e:

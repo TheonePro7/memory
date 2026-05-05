@@ -141,8 +141,8 @@ refactor: 重构
 | T06 | context.json 多会话竞态 | 🟢 轻微 | v0.1 | ✅ 已修复 (v0.5) |
 | T07 | summarize 关键字匹配脆弱 | 🟢 轻微 | v0.1 | ✅ 已修复 (v0.5) |
 | T08 | 测试覆盖不全（mem0/md/audit/summarize） | 🟡 中等 | v0.1 | ✅ 已修复 (v0.5) |
-| T09 | ChromaDB $and 语法版本依赖 | 🟢 轻微 | v0.1 | ⬜ 待做 |
-| T10 | stats count 10000 条上限 | 🟢 轻微 | v0.1 | ⬜ 待做 |
+| T09 | ChromaDB $and 语法版本依赖 | 🟢 轻微 | v0.1 | 🟡 设计约束 — ChromaDB 强制要求，无法避免 |
+| T10 | stats count 10000 条上限 | 🟢 轻微 | v0.1 | ✅ 已修复 (v0.5) — 移除 limit, get() 返回全部 |
 
 ---
 
