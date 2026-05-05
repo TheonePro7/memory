@@ -71,22 +71,21 @@ def recall(
         process: 是否用 LLM 重排序
     """
     target = route(query)
-    results = []
+    results: list[dict] = []
 
     if target == "markdown":
         md_results = md_backend.grep(query)
-        results.extend({
-            "content": r["content"],
-            "date": r["date"],
-            "source": "markdown",
-            "relevance": 0.8,
-        } for r in md_results[:limit])
+        for r in md_results[:limit]:
+            results.append({
+                "content": r["content"],
+                "date": r["date"],
+                "source": "markdown",
+                "score": 0.8,
+            })
         mem_results = mem0_backend.search(query, limit=limit // 2)
-        results.extend({
-            "content": r.get("memory", ""),
-            "score": r.get("score", 0),
-            "source": "mem0",
-        } for r in mem_results)
+        for r in mem_results:
+            results.append(_format_mem0_result(r))
+
     else:
         mem_results = mem0_backend.search(query, limit=limit)
         if process and mem_results:
@@ -94,14 +93,33 @@ def recall(
             reranked = rerank(query, mem_results, top_n=min(limit, 5))
             if reranked:
                 mem_results = reranked
-        results.extend({
-            "content": r.get("memory", ""),
-            "score": r.get("score", 0),
-            "source": "mem0",
-        } for r in mem_results)
+        for r in mem_results:
+            results.append(_format_mem0_result(r))
 
     audit.log("recall", query_summary=query[:50], backend=target, process=process)
     return results[:limit]
+
+
+def _format_mem0_result(r: dict) -> dict:
+    """格式化 mem0 搜索结果，包含 LLM 加工 metadata（如有）。"""
+    item: dict = {
+        "content": r.get("memory", ""),
+        "score": r.get("score", 0),
+        "source": "mem0",
+        "id": r.get("id", ""),
+    }
+    meta = r.get("metadata") or {}
+    if meta.get("entities"):
+        item["entities"] = meta["entities"].split(",") if isinstance(meta["entities"], str) else meta["entities"]
+    if meta.get("actions"):
+        item["actions"] = meta["actions"].split(",") if isinstance(meta["actions"], str) else meta["actions"]
+    if meta.get("llm_summary"):
+        item["llm_summary"] = meta["llm_summary"]
+    if meta.get("tags"):
+        item["tags"] = meta["tags"].split(",") if isinstance(meta["tags"], str) else meta["tags"]
+    if "rerank_reason" in r:
+        item["rerank_reason"] = r["rerank_reason"]
+    return item
 
 
 @mcp.tool()
