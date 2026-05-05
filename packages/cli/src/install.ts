@@ -32,7 +32,7 @@ export function runInstall(argv: string[]): InstallResult {
     if (!dryRun) {
       // Step 3: pip install (2 tries)
       const tries: [string, string][] = [
-        [py.pipCmd, "agent-memory-mcp"],
+        [py.pipCmd, "ivanston-memory-mcp"],
         [py.pipCmd, join(__dirname, "..", "src", "vendor", "requirements.txt")],
       ];
 
@@ -50,7 +50,7 @@ export function runInstall(argv: string[]): InstallResult {
       if (installed) {
         console.log(`  ✓ Python dependencies installed (mode: ${mcpMode})`);
       } else {
-        warnings.push("pip install 失败。请手动执行: pip install agent-memory-mcp");
+        warnings.push("pip install 失败。请手动执行: pip install ivanston-memory-mcp");
         console.warn("  ⚠ pip install failed");
       }
     }
