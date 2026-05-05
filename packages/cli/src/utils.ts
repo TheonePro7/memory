@@ -1,142 +1,160 @@
 import { execSync } from "child_process";
 import { existsSync, mkdirSync, writeFileSync, readFileSync, appendFileSync } from "fs";
 import { homedir } from "os";
-import { join } from "path";
+import { join, resolve } from "path";
 
-const PROJECT_ROOT = process.env.AGENT_MEMORY_PROJECT_ROOT || process.cwd();
+export interface InstallResult {
+  success: boolean;
+  warnings: string[];
+  mcpMode: "pypi" | "local" | "manual";
+}
 
-export const MEMORY_DIR = join(PROJECT_ROOT, "memory");
-export const MEMORY_DOT_DIR = join(PROJECT_ROOT, ".memory");
-export const CONFIG_DIR = join(homedir(), ".agent-memory");
-export const CONFIG_PATH = join(CONFIG_DIR, "config.yaml");
-export const HOOKS_PATH = join(PROJECT_ROOT, ".claude", "hooks.json");
-export const CLAUDE_MD_PATH = join(PROJECT_ROOT, "CLAUDE.md");
-export const SETTINGS_PATH = join(PROJECT_ROOT, ".claude", "settings.local.json");
-
-export interface InstallOptions {
-  withTasks?: boolean;
-  withExperience?: boolean;
-  withStructure?: boolean;
+export function resolveTargetDir(argv: string[]): string {
+  const pathArg = argv.find((a) => !a.startsWith("-"));
+  return pathArg ? resolve(pathArg) : process.cwd();
 }
 
 export function ensureDir(dir: string): void {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
-export function pipInstall(packageName: string): boolean {
+export function hasDryRun(argv: string[]): boolean {
+  return argv.includes("--dry-run");
+}
+
+export function detectPython(): { ok: boolean; version: string; pipCmd: string } {
   try {
-    execSync(`pip install ${packageName}`, { stdio: "inherit" });
+    const out = execSync("python3 --version", { encoding: "utf-8", stdio: "pipe" }).trim();
+    const match = out.match(/Python (\d+\.\d+)/);
+    if (!match) return { ok: false, version: "unknown", pipCmd: "" };
+    const version = parseFloat(match[1]);
+    const pipCmd = version >= 3.12 ? "python3 -m pip" : "pip3";
+    return { ok: version >= 3.10, version: match[1], pipCmd };
+  } catch {
+    return { ok: false, version: "unknown", pipCmd: "" };
+  }
+}
+
+export function pipInstall(pipCmd: string, pkg: string): boolean {
+  try {
+    execSync(`${pipCmd} install ${pkg}`, { stdio: "pipe", timeout: 120_000 });
     return true;
   } catch {
     return false;
   }
 }
 
-export function writeConfig(userId = "default", projectId = ""): void {
-  const config = [
-    `user_id: ${userId}`,
-    `project_id: ${projectId || "null"}`,
-    `memory_dir: ${MEMORY_DIR}`,
-    `chroma_dir: ${join(MEMORY_DOT_DIR, "chroma")}`,
-    "",
-    "llm:",
-    "  provider: auto",
-    "  api_key_env: ANTHROPIC_API_KEY",
-    "",
-    "mcp:",
-    "  transport: stdio",
-    "  port: 8710",
-  ].join("\n");
-  ensureDir(CONFIG_DIR);
-  writeFileSync(CONFIG_PATH, config, "utf-8");
+export function pipInstallRequirements(pipCmd: string, reqPath: string): boolean {
+  try {
+    execSync(`${pipCmd} install -r "${reqPath}"`, { stdio: "pipe", timeout: 120_000 });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-export function writeHooks(): void {
-  const dir = join(process.cwd(), ".claude");
-  ensureDir(dir);
+export function writeSettingsJson(targetDir: string, mcpArgs: string[]): void {
+  const claudeDir = join(targetDir, ".claude");
+  ensureDir(claudeDir);
+  const path = join(claudeDir, "settings.local.json");
 
-  let existing: Record<string, string[]> = {};
-  if (existsSync(HOOKS_PATH)) {
-    try {
-      existing = JSON.parse(readFileSync(HOOKS_PATH, "utf-8"));
-    } catch { /* ignore parse errors */ }
+  let existing: Record<string, any> = {};
+  if (existsSync(path)) {
+    try { existing = JSON.parse(readFileSync(path, "utf-8")); } catch { /* ok */ }
   }
 
-  const newHooks = {
+  const merged = {
+    ...existing,
+    mcpServers: {
+      ...(existing.mcpServers || {}),
+      "agent-memory": {
+        command: "python",
+        args: mcpArgs,
+      },
+    },
+  };
+
+  writeFileSync(path, JSON.stringify(merged, null, 2) + "\n", "utf-8");
+}
+
+export function writeHooksJson(targetDir: string): void {
+  const claudeDir = join(targetDir, ".claude");
+  ensureDir(claudeDir);
+  const path = join(claudeDir, "hooks.json");
+
+  let existing: Record<string, string[]> = {};
+  if (existsSync(path)) {
+    try { existing = JSON.parse(readFileSync(path, "utf-8")); } catch { /* ok */ }
+  }
+
+  const hooks: Record<string, string[]> = {
     onSessionStart: ["agent-memory recall"],
     onSessionEnd: ["agent-memory summarize"],
   };
 
   const merged: Record<string, string[]> = {};
-  for (const key of new Set([...Object.keys(existing), ...Object.keys(newHooks)])) {
+  const allKeys = new Set([...Object.keys(existing), ...Object.keys(hooks)]);
+  for (const key of allKeys) {
     const existingCmds = existing[key] || [];
-    const newCmds = newHooks[key as keyof typeof newHooks] || [];
+    const newCmds = hooks[key as keyof typeof hooks] || [];
     merged[key] = [...new Set([...existingCmds, ...newCmds])];
   }
 
-  writeFileSync(HOOKS_PATH, JSON.stringify(merged, null, 2), "utf-8");
+  writeFileSync(path, JSON.stringify(merged, null, 2) + "\n", "utf-8");
 }
 
-export function writeClaudeMd(): void {
-  const guide = [
+export function writeAgentMemoryConfig(targetDir: string): void {
+  const cfgDir = join(homedir(), ".agent-memory");
+  ensureDir(cfgDir);
+  const path = join(cfgDir, "config.yaml");
+  const projectName = targetDir.split(/[/\\]/).pop() || "default";
+  const config = [
+    `user_id: default`,
+    `project_id: ${projectName}`,
+    `memory_dir: ${join(homedir(), ".agent-memory")}`,
+    `chroma_dir: ${join(homedir(), ".agent-memory", "chroma")}`,
+    "",
+    `llm:`,
+    `  provider: auto`,
+    `  api_key_env: ANTHROPIC_API_KEY`,
+    "",
+    `mcp:`,
+    `  transport: stdio`,
+    `  port: 8710`,
+  ].join("\n");
+  writeFileSync(path, config, "utf-8");
+}
+
+export function updateClaudeMd(targetDir: string): void {
+  const path = join(targetDir, "CLAUDE.md");
+  const section = [
     "",
     "## 记忆系统",
     "",
-    '你拥有持久记忆能力。当用户说"记住""注意""以后要知道"等时，主动调用 remember() 工具。',
+    "你拥有持久记忆能力。当用户说\"记住\"\"注意\"\"以后要知道\"等时，主动调用 `remember()` MCP 工具。",
     "会话结束时系统会自动 summarize，不需要你手动操作。",
     "",
   ].join("\n");
 
-  if (existsSync(CLAUDE_MD_PATH)) {
-    const existing = readFileSync(CLAUDE_MD_PATH, "utf-8");
-    if (!existing.includes("## 记忆系统")) {
-      appendFileSync(CLAUDE_MD_PATH, guide, "utf-8");
-    }
-  } else {
-    writeFileSync(CLAUDE_MD_PATH, guide, "utf-8");
+  if (!existsSync(path)) {
+    writeFileSync(path, section, "utf-8");
+    return;
+  }
+
+  const content = readFileSync(path, "utf-8");
+  if (!content.includes("## 记忆系统")) {
+    appendFileSync(path, section, "utf-8");
   }
 }
 
-export function writeMcpConfig(serverScriptPath: string): void {
-  const dir = join(process.cwd(), ".claude");
-  ensureDir(dir);
+export function copyVendorMcpServer(targetDir: string): string {
+  const vendorDir = join(__dirname, "..", "vendor");
+  const destDir = join(targetDir, ".agent-memory", "mcp-server");
+  ensureDir(destDir);
 
-  // Read existing settings if any
-  let existing: Record<string, any> = {};
-  if (existsSync(SETTINGS_PATH)) {
-    try {
-      existing = JSON.parse(readFileSync(SETTINGS_PATH, "utf-8"));
-    } catch { /* ignore parse errors */ }
+  const reqSrc = join(vendorDir, "requirements.txt");
+  if (existsSync(reqSrc)) {
+    writeFileSync(join(destDir, "requirements.txt"), readFileSync(reqSrc, "utf-8"), "utf-8");
   }
-
-  // Merge agent-memory MCP config
-  const merged = {
-    ...existing,
-    mcpServers: {
-      ...existing.mcpServers,
-      "agent-memory": {
-        command: "python",
-        args: [serverScriptPath],
-        env: {},
-      },
-    },
-  };
-
-  writeFileSync(SETTINGS_PATH, JSON.stringify(merged, null, 2), "utf-8");
-}
-
-export function removeConfig(): void {
-  try {
-    if (existsSync(CLAUDE_MD_PATH)) {
-      let content = readFileSync(CLAUDE_MD_PATH, "utf-8");
-      content = content.replace(/\n## 记忆系统\n\n[\s\S]*?(?=\n## |$)/, "");
-      writeFileSync(CLAUDE_MD_PATH, content.trim(), "utf-8");
-    }
-    if (existsSync(HOOKS_PATH)) {
-      writeFileSync(HOOKS_PATH, "{}", "utf-8");
-    }
-    console.log("Cleanup complete. MCP config in .claude/settings.local.json needs manual removal.");
-  } catch (e) {
-    console.error("Cleanup failed:", e);
-  }
+  return destDir;
 }
