@@ -1,4 +1,4 @@
-"Agent 记忆系统 Hook CLI — 通过 shell 命令供 Hook 调用"""
+"""Agent 记忆系统 Hook CLI — 通过 shell 命令供 Hook 调用"""
 
 import sys
 import json
@@ -181,7 +181,7 @@ def cmd_remember():
         print("Usage: agent-memory remember <content> [--tags a,b,c] [--project-id name] [--process]", file=sys.stderr)
         sys.exit(1)
     content = sys.argv[2]
-    process = "--process" in sys.argv and sys.argv[2] != "--process"
+    process = "--process" in sys.argv
     tags = []
     if "--tags" in sys.argv:
         idx = sys.argv.index("--tags")
