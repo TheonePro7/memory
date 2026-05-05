@@ -21,6 +21,18 @@ packages/
 └── dashboard/     React     Web 管理界面
 ```
 
+## 当前进度
+
+- [x] 市场调研、竞品扫描、技术研究
+- [x] 产品定位与 MVP 设计
+- [x] CLI 工具 — remember / recall / summarize 命令可用
+- [x] Hook 自动 recall（会话开始）和 summarize（会话结束）
+- [x] ChromaDB+fastembed 后端，支持中文搜索，Dashboard 可访问
+- [x] 任务记忆系统 — SQLite 后端，beads 同步，Dashboard 任务面板
+- [x] TypeScript CLI — `npx @agent-memory/init` 一键安装
+- [ ] npm 发布 @agent-memory/init
+- [ ] PyPI 发布 agent-memory-mcp
+
 ## 快速开始
 
 ```bash

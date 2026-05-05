@@ -1,5 +1,7 @@
 # Agent Memory — Project Rules
 
+> 项目总览：[docs/project-overview.md](docs/project-overview.md)
+
 ## 项目定位
 
 做一家 Agent 记忆公司。核心产品：让 Agent 安装后自动拥有记忆能力（元认知层）。
