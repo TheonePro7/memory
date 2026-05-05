@@ -47,6 +47,19 @@ npx @agent-memory/remove ./my-project     # 从指定项目卸载
 
 ---
 
+## 1.4 当前进度
+
+| 版本 | 内容 | 状态 |
+|------|------|------|
+| v0.1 | 基础记忆 — ChromaDB+fastembed 后端，remember/recall | ✅ |
+| v0.2 | 记忆智能「加工」🔜 — LLM 提取实体/动作/摘要，搜索结果重排序 | 🔄 开发中 |
+| v0.3 | 任务记忆 — SQLite CRUD，beads 同步，Dashboard 任务面板 | ✅ |
+| v0.4 | TypeScript CLI — `npx @agent-memory/init` 一键安装 | ✅ 待发布 |
+| — | npm 发布 @agent-memory/init | ⬜ |
+| — | PyPI 发布 agent-memory-mcp | ⬜ |
+
+---
+
 ## 2. 架构总览
 
 ### 2.1 组件关系

@@ -40,13 +40,28 @@ MVP：`npx @agent-memory/init` — 一键激活 Agent 记忆的 CLI 工具。
 
 ## 当前状态
 
+### v0.1 基础记忆 ✅
 - [x] 市场调研、竞品扫描、技术研究
 - [x] 产品定位与 MVP 设计
-- [x] CLI 工具 — remember / recall / summarize 命令可用
+- [x] ChromaDB+fastembed 后端，remember/recall 基础功能
 - [x] Hook 自动 recall（会话开始）和 summarize（会话结束）
-- [x] ChromaDB+fastembed 后端，支持中文搜索，Dashboard 可访问
-- [x] 任务记忆系统 — SQLite 后端，beads 同步，Dashboard 任务面板
-- [x] TypeScript CLI — `npx @agent-memory/init` 一键安装（5 步流程，优雅降级，8 个测试）
+
+### v0.2 记忆智能「加工」🔜
+- [ ] LLM 实体/动作/摘要提取
+- [ ] 搜索结果 LLM 重排序
+- [ ] `--process` 参数集成
+
+### v0.3 任务记忆 ✅
+- [x] SQLite CRUD 后端
+- [x] beads 增量同步
+- [x] Dashboard 任务面板
+
+### v0.4 TypeScript CLI ✅
+- [x] `npx @agent-memory/init [path] [--dry-run]` 一键安装
+- [x] 5 步安装流程（优雅降级，8 个测试）
+- [x] `npx @agent-memory/remove` 卸载
+
+### 待办
 - [ ] npm 发布 @agent-memory/init
 - [ ] PyPI 发布 agent-memory-mcp
 
