@@ -6,18 +6,24 @@ import { runRemove } from "./remove";
 const args = process.argv.slice(2);
 const command = args[0] || "init";
 
-switch (command) {
-  case "init":
-  case "install":
-    runInstall(args.slice(1));
-    break;
-  case "remove":
-  case "uninstall":
-    runRemove(args.slice(1));
-    break;
-  case "--help":
-  case "help":
-    console.log(`Usage:
+const COMMANDS = new Set(["init", "install", "remove", "uninstall", "--help", "help"]);
+
+if (!COMMANDS.has(command)) {
+  // First arg is a path, not a command — default to "init"
+  runInstall(args);
+} else {
+  switch (command) {
+    case "init":
+    case "install":
+      runInstall(args.slice(1));
+      break;
+    case "remove":
+    case "uninstall":
+      runRemove(args.slice(1));
+      break;
+    case "--help":
+    case "help":
+      console.log(`Usage:
   npx @agent-memory/init [path] [--dry-run]
   npx @agent-memory/remove [path] [--dry-run]
 
@@ -30,9 +36,10 @@ Examples:
   npx @agent-memory/init ./my-project        指定项目
   npx @agent-memory/init --dry-run           仅检测环境
   npx @agent-memory/remove                   卸载当前项目`);
-    break;
-  default:
-    console.error(`Unknown command: ${command}`);
-    console.error("Usage: npx @agent-memory/init [path] [--dry-run]");
-    process.exit(1);
+      break;
+    default:
+      console.error(`Unknown command: ${command}`);
+      console.error("Usage: npx @agent-memory/init [path] [--dry-run]");
+      process.exit(1);
+  }
 }

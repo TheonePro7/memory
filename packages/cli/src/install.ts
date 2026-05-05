@@ -33,7 +33,7 @@ export function runInstall(argv: string[]): InstallResult {
       // Step 3: pip install (2 tries)
       const tries: [string, string][] = [
         [py.pipCmd, "agent-memory-mcp"],
-        [py.pipCmd, join(__dirname, "..", "vendor", "requirements.txt")],
+        [py.pipCmd, join(__dirname, "..", "src", "vendor", "requirements.txt")],
       ];
 
       let installed = false;
@@ -63,6 +63,8 @@ export function runInstall(argv: string[]): InstallResult {
     } else if (mcpMode === "local") {
       const dest = copyVendorMcpServer(targetDir);
       writeSettingsJson(targetDir, [join(dest, "server.py")]);
+    } else {
+      writeSettingsJson(targetDir, ["-m", "agent_memory_mcp"]);
     }
     console.log("  ✓ MCP config written");
 

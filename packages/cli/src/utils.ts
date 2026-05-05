@@ -148,7 +148,7 @@ export function updateClaudeMd(targetDir: string): void {
 }
 
 export function copyVendorMcpServer(targetDir: string): string {
-  const vendorDir = join(__dirname, "..", "vendor");
+  const vendorDir = join(__dirname, "..", "src", "vendor");
   const destDir = join(targetDir, ".agent-memory", "mcp-server");
   ensureDir(destDir);
 
