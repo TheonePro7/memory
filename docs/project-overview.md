@@ -21,15 +21,6 @@ packages/
 └── dashboard/     React     Web 管理界面
 ```
 
-## 版本历史
-
-| 版本 | 内容 | 状态 |
-|------|------|------|
-| v0.1 | MVP — ChromaDB+fastembed 后端，基础 remember/recall | ✅ |
-| v0.2 | LLM 实体/动作/摘要提取，搜索结果重排序 | ✅ |
-| v0.3 | 任务记忆系统 — SQLite CRUD，beads 同步，Dashboard 面板 | ✅ |
-| v0.4 | TypeScript CLI — `npx @agent-memory/init` 一键安装 | ✅ 待发布 |
-
 ## 快速开始
 
 ```bash

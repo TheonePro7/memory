@@ -38,28 +38,15 @@ MVP：`npx @agent-memory/init` — 一键激活 Agent 记忆的 CLI 工具。
 
 ## 当前状态
 
-### v0.1-0.3 — Python MVP ✅
-
 - [x] 市场调研、竞品扫描、技术研究
 - [x] 产品定位与 MVP 设计
-- [x] ChromaDB+fastembed 后端，支持中文搜索，Dashboard 可访问
 - [x] CLI 工具 — remember / recall / summarize 命令可用
 - [x] Hook 自动 recall（会话开始）和 summarize（会话结束）
-- [x] v0.3 任务记忆系统 — SQLite 后端，beads 同步，Dashboard 任务面板
-
-### v0.4 — TypeScript CLI 一键安装 ✅
-
-- [x] `packages/cli` — TypeScript 编写的 CLI 工具
-- [x] `npx @agent-memory/init [path] [--dry-run]` 一键安装
-- [x] 5 步安装流程：检测 Python → pip install agent-memory-mcp（PyPI 优先，vendor 回退）→ 写 MCP 配置 → 写 hooks → 更新 CLAUDE.md
-- [x] 优雅降级：每步错误独立隔离，不阻断后续步骤
-- [x] 卸载命令：`npx @agent-memory/remove [path] [--dry-run]`
-- [x] 8 个测试覆盖单元测试和集成测试
-
-### 待发布
-
-- [ ] `npm publish @agent-memory/init` — 发布到 npm
-- [ ] `pip publish agent-memory-mcp` — 创建 PyPI MCP 包
+- [x] ChromaDB+fastembed 后端，支持中文搜索，Dashboard 可访问
+- [x] 任务记忆系统 — SQLite 后端，beads 同步，Dashboard 任务面板
+- [x] TypeScript CLI — `npx @agent-memory/init` 一键安装（5 步流程，优雅降级，8 个测试）
+- [ ] npm 发布 @agent-memory/init
+- [ ] PyPI 发布 agent-memory-mcp
 
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
