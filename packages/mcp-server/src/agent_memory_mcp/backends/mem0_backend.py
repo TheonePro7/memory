@@ -184,6 +184,30 @@ def delete(memory_id: str) -> bool:
         return False
 
 
+def update(memory_id: str, new_content: str) -> bool:
+    """更新记忆内容 — 删除原记录后重新插入（ChromaDB 不支持原地更新）。"""
+    try:
+        if not new_content or not new_content.strip():
+            return False
+        existing = _get_collection().get(ids=[memory_id], include=["metadatas"])
+        if not existing or not existing.get("ids"):
+            return False
+        old_meta = existing["metadatas"][0] if existing.get("metadatas") else {}
+
+        _get_collection().delete(ids=[memory_id])
+        vector = _embed(new_content)
+        _get_collection().add(
+            documents=[new_content],
+            embeddings=[vector],
+            metadatas=[old_meta],
+            ids=[memory_id],
+        )
+        return True
+    except Exception as e:
+        logger.error("update failed: %s", e)
+        return False
+
+
 def stats(user_id: str = "default", project_id: str | None = None) -> dict:
     try:
         col = _get_collection()

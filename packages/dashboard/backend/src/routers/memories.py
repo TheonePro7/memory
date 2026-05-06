@@ -1,9 +1,23 @@
 """记忆 CRUD API"""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from backends import mem0_backend
 
 router = APIRouter(tags=["memories"])
+
+
+class MemoryUpdate(BaseModel):
+    content: str
+
+
+@router.put("/memories/{memory_id}")
+def update_memory(memory_id: str, update: MemoryUpdate):
+    """编辑记忆内容。"""
+    ok = mem0_backend.update(memory_id, update.content)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    return {"status": "updated", "id": memory_id}
 
 
 @router.get("/memories")

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Input, Table, Tag, Typography, Space, Select } from "antd";
-import { SearchOutlined, FolderOutlined } from "@ant-design/icons";
+import { Input, Table, Tag, Typography, Space, Select, Button, Modal } from "antd";
+import { SearchOutlined, FolderOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
 interface Memory {
@@ -49,14 +49,29 @@ export default function Memories() {
     search(query, pid);
   };
 
+  const [editModal, setEditModal] = useState<{ visible: boolean; memory: Memory | null }>({ visible: false, memory: null });
+  const [editContent, setEditContent] = useState("");
+
+  const handleDelete = (memory: Memory) => {
+    Modal.confirm({
+      title: "确认删除",
+      content: `确定要删除这条记忆吗？\n"${(memory.memory || "").slice(0, 50)}..."`,
+      onOk: async () => {
+        await fetch(`/api/memories/${memory.id}`, { method: "DELETE" });
+        search(query, projectFilter);
+      },
+    });
+  };
+
   const columns: ColumnsType<Memory> = [
     {
       title: "内容",
       dataIndex: "memory",
       key: "memory",
+      ellipsis: true,
       render: (t: string, r: Memory) => {
         const display = r.metadata?.llm_summary || t;
-        return display?.slice(0, 80);
+        return display;
       },
     },
     {
@@ -81,11 +96,18 @@ export default function Memories() {
       },
     },
     {
-      title: "来源",
-      dataIndex: "source",
-      key: "source",
-      width: 80,
-      render: (t: string) => <Tag>{t || "chroma"}</Tag>,
+      title: "时间",
+      key: "created_at",
+      width: 180,
+      render: (_: unknown, r: Memory) => {
+        const ts = r.metadata?.created_at;
+        if (!ts) return <Tag color="default">--</Tag>;
+        const d = new Date(ts);
+        return d.toLocaleString("zh-CN", {
+          year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit",
+        });
+      },
     },
     {
       title: "相关性",
@@ -93,6 +115,20 @@ export default function Memories() {
       key: "score",
       width: 80,
       render: (s: number) => s?.toFixed(2),
+    },
+    {
+      title: "操作",
+      key: "actions",
+      width: 100,
+      render: (_: unknown, r: Memory) => (
+        <Space>
+          <Button type="link" icon={<EditOutlined />} onClick={() => {
+            setEditContent(r.memory || "");
+            setEditModal({ visible: true, memory: r });
+          }} />
+          <Button type="link" danger icon={<DeleteOutlined />} onClick={() => handleDelete(r)} />
+        </Space>
+      ),
     },
   ];
 
@@ -124,6 +160,23 @@ export default function Memories() {
         pagination={{ pageSize: 20 }}
         rowKey={(r) => r.id || r.memory || Math.random().toString()}
       />
+      <Modal
+        title="编辑记忆"
+        open={editModal.visible}
+        onOk={async () => {
+          if (!editModal.memory?.id) return;
+          await fetch(`/api/memories/${editModal.memory.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: editContent }),
+          });
+          setEditModal({ visible: false, memory: null });
+          search(query, projectFilter);
+        }}
+        onCancel={() => setEditModal({ visible: false, memory: null })}
+      >
+        <Input.TextArea value={editContent} onChange={e => setEditContent(e.target.value)} rows={4} />
+      </Modal>
     </div>
   );
 }

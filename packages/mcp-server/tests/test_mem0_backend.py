@@ -54,3 +54,31 @@ class TestMem0Backend:
         """空查询返回空列表"""
         results = mem0_backend.search("", project_id="test-mem0")
         assert results == []
+
+    def test_update(self):
+        """更新记忆后内容改变"""
+        content = "原始内容_test_mem0_backend"
+        r = mem0_backend.add(content, project_id="test-mem0")
+        assert r["status"] == "stored"
+        rid = r["id"]
+
+        new_content = "更新后的内容_test_mem0_backend"
+        ok = mem0_backend.update(rid, new_content)
+        assert ok is True
+
+        # 搜索验证内容已更新
+        results = mem0_backend.search("更新后的内容", project_id="test-mem0")
+        assert any(new_content in m.get("memory", "") for m in results)
+
+    def test_update_not_found(self):
+        """更新不存在的 id 返回 False"""
+        ok = mem0_backend.update("non-existent-id", "新内容")
+        assert ok is False
+
+    def test_update_empty_content(self):
+        """更新空内容返回 False"""
+        content = "待更新测试_test_mem0_backend"
+        r = mem0_backend.add(content, project_id="test-mem0")
+        assert r["status"] == "stored"
+        ok = mem0_backend.update(r["id"], "")
+        assert ok is False
