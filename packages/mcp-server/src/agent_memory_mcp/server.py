@@ -141,5 +141,23 @@ def task_context(project_id: str | None = None) -> dict:
         return {"active_tasks": [], "recent_tasks": [], "total": 0, "error": str(e)}
 
 
+# 启动时注册第三方适配器
+from agent_memory_mcp.core import register_adapter
+
+try:
+    from agent_memory_mcp.backends.adapters.mem0_adapter import Mem0Adapter
+    register_adapter(Mem0Adapter())
+    logger.info("registered Mem0 adapter")
+except Exception:
+    pass
+
+try:
+    from agent_memory_mcp.backends.adapters.md_adapter import BasicMemoryAdapter
+    register_adapter(BasicMemoryAdapter())
+    logger.info("registered Basic Memory adapter")
+except Exception:
+    pass
+
+
 if __name__ == "__main__":
     mcp.run()
