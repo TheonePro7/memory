@@ -76,14 +76,17 @@ class BasicMemoryAdapter(MemoryAdapter):
             return None
         parts = memory_id.split("_", 2)
         if len(parts) >= 2:
-            md_file = base_dir / f"{parts[1]}.md"
+            resolved = (base_dir / f"{parts[1]}.md").resolve()
+            # 防止路径遍历攻击
+            if not str(resolved).startswith(str(base_dir.resolve())):
+                return None
             try:
-                if md_file.exists():
-                    content = md_file.read_text(encoding="utf-8")
+                if resolved.exists():
+                    content = resolved.read_text(encoding="utf-8")
                     return {
                         "id": memory_id,
                         "memory": content[:500],
-                        "metadata": {"source_file": str(md_file)},
+                        "metadata": {"source_file": str(resolved)},
                         "source": "basic_memory",
                     }
             except (OSError, UnicodeDecodeError) as e:
