@@ -1,1 +1,1 @@
-﻿{"phase":2,"step":"design","feature":"V1.0 记忆管理产品","prd":"docs/prd/v1.0-memory-management.md","blocker":"","gate_probe":"pending","gate_scenario":"pending","gate_fix":"pending","gate_security":"pending","updatedAt":"2026-05-07T00:00:00Z"}
+{"phase":3,"step":"review","feature":"V1.0 记忆管理产品","prd":"docs/prd/v1.0-memory-management.md","blocker":"","gate_probe":"passed","gate_scenario":"passed","gate_fix":"passed","gate_security":"passed","updatedAt":"2026-05-07T00:00:00Z"}
