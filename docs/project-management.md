@@ -78,6 +78,7 @@ CLI 层 (cli.py)        — Shell 命令适配，薄胶水
 | v0.3 | 任务记忆 — SQLite CRUD、beads 同步、Dashboard 任务面板 | ✅ 完成 | — |
 | v0.4 | TypeScript CLI — `npx @agent-memory/init` 一键安装 | ✅ 完成 | 2026-05-05 |
 | v0.5 | 架构重构 — core.py 抽取、CLI 命令注册、死代码清理、测试覆盖 | ✅ 完成 | 2026-05-05 |
+| v1.0 | **记忆管理产品** — 编辑/删除 UI、配额(100次/月+裂变)、适配器框架、Mem0/Basic Memory 兼容 | ✅ 完成 | 2026-05-06 |
 | — | npm 发布 @agent-memory/init | ⬜ 待做 | — |
 | — | PyPI 发布 agent-memory-mcp | ⬜ 待做 | — |
 
@@ -114,18 +115,11 @@ refactor: 重构
 
 ## 5. 活跃工作项
 
-当前 beads epic：[memory-4l3](bd show memory-4l3) — 设计缺陷修复
-
 | 任务 | 状态 | beads ID |
 |------|------|----------|
-| core.py 抽取共享层 | ✅ 完成 | — |
-| server.py 使用 core.py | ✅ 完成 | — |
-| CLI 命令注册 + 包重构 | ✅ 完成 | — |
-| 路由死代码清理 + forget() 实现 | ✅ 完成 | — |
-| SQLite 连接管理修复 | ✅ 完成 | — |
-| context.json 竞态修复 | ✅ 完成 | — |
-| summarize 任务关联增强 | ✅ 完成 | — |
-| 补充测试覆盖 | ✅ 完成 | — |
+| **V1.0 记忆管理** — 编辑/删除 UI、配额、适配器 | ✅ 完成 | — |
+| npm 发布 @agent-memory/init | ⬜ 待做 | — |
+| PyPI 发布 agent-memory-mcp | ⬜ 待做 | — |
 
 ---
 
@@ -143,6 +137,9 @@ refactor: 重构
 | T08 | 测试覆盖不全（mem0/md/audit/summarize） | 🟡 中等 | v0.1 | ✅ 已修复 (v0.5) |
 | T09 | ChromaDB $and 语法版本依赖 | 🟢 轻微 | v0.1 | 🟡 设计约束 — ChromaDB 强制要求，无法避免 |
 | T10 | stats count 10000 条上限 | 🟢 轻微 | v0.1 | ✅ 已修复 (v0.5) — 移除 limit, get() 返回全部 |
+| T11 | 编辑配额仅前端校验，后端 PUT API 无配额检查 | 🟢 轻微 | v1.0 | 🟡 已知 — V1.0 无用户认证，有意设计为前端检查 |
+| T12 | ChromaDB 不支持原地 update，采用删+重插策略 | 🟢 轻微 | v1.0 | 🟢 设计约束 — ChromaDB 限制，不影响功能 |
+| T13 | 适配器 V1.0 只读，不支持写入第三方存储 | 🟢 轻微 | v1.0 | 🟢 设计约束 — V1.0 管理层核心是读数据，写同步规划在 V1.1 |
 
 ---
 
@@ -184,6 +181,24 @@ refactor: 重构
 - **决策：** 移除路由机制
 - **理由：** YAGNI — 没有多后端路由的真实需求，代码死在那里从未执行
 
+### ADR-007：为什么编辑限制不放在后端强制校验？
+
+- **时间：** 2026-05-06 (v1.0)
+- **决策：** 配额检查仅在前端 Dashboard 层
+- **理由：** V1.0 无用户认证系统，后端无法区分请求来源。后端做配额需要先引入安装 ID 认证或 API Key，这是 V1.1 的工作。前端校验 + 后端 POST /quota/increment 对于本地 Dashboard 场景已足够
+
+### ADR-008：为什么适配器 V1.0 只读？
+
+- **时间：** 2026-05-06 (v1.0)
+- **决策：** 适配器只实现 list_all/get，不实现 add/update/delete
+- **理由：** 管理层核心价值是"在一个地方看所有记忆"，读是 MVP 路径。反向写回第三方存储需要处理冲突、格式转换、幂等性等问题，适合 V1.1 引入
+
+### ADR-009：为什么编辑操作采用"删+重插"而非原地更新？
+
+- **时间：** 2026-05-06 (v1.0)
+- **决策：** ChromaDB 不支持文档级别原地更新，因此 delete → re-insert
+- **理由：** 保留原记录 ID 和 metadata（创建时间等不会因编辑而丢失），确保搜索和引用不受影响
+
 ---
 
 ## 8. 发布状态
@@ -212,6 +227,17 @@ refactor: 重构
 ## 9. 变更记录
 
 每行格式：`YYYY-MM-DD | [类型] 描述 | commit hash`
+
+### 2026-05-06 (v1.0 记忆管理产品)
+
+| 类型 | 描述 | Commit |
+|------|------|--------|
+| chore | 版本号 v1.0.0、README 更新、CHANGELOG 生成 | a536c33 |
+| feat | Mem0 + Basic Memory 适配器、导出 API | 678b424 |
+| feat | 同步层 + 适配器接口（register_adapter / get_adapters） | c41049d |
+| feat | 编辑配额 (100次/月+裂变推荐)、升级引导、CLI refer | 0450ef3 |
+| feat | Dashboard 编辑/删除 UI + 后端 update API | 60799d0 |
+| fix | Bug 修复：delete 漏洞、audit 清理、session_log 去重 | 1f5bf9a |
 
 ### 2026-05-05 (v0.5 重构)
 

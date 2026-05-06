@@ -34,6 +34,9 @@ Agent Memory 是一个为 Claude Code 提供持久记忆能力的元认知层。
 | 智能加工 | LLM 自动提取实体/动作/摘要 | processor.py 调用 Anthropic/OpenAI |
 | 任务管理 | 结构化的任务跟踪与状态流转 | SQLite CRUD + beads 同步 |
 | 一键安装 | 新项目 5 步自动激活 | TypeScript CLI + MCP 配置注入 |
+| **记忆编辑/删除** | Dashboard 直接修改记忆内容 | PUT/DELETE API + ChromaDB 重插 |
+| **编辑配额** | 每月 100 次免费编辑 + 裂变推荐扩容 | SQLite 配额子系统 |
+| **第三方兼容** | 统一管理 Mem0/Basic Memory/自有存储 | MemoryAdapter 抽象基类 + 注册中心 |
 
 ### 1.3 安装方式
 
@@ -56,6 +59,7 @@ npx @agent-memory/remove ./my-project     # 从指定项目卸载
 | v0.3 | 任务记忆 — SQLite CRUD，beads 同步，Dashboard 任务面板 | ✅ |
 | v0.4 | TypeScript CLI — `npx @agent-memory/init` 一键安装 | ✅ |
 | v0.5 | 架构重构 — core.py 共享层、CLI 命令注册、死代码清理、52 个测试 | ✅ |
+| v1.0 | **记忆管理产品** — 编辑/删除 UI、配额限制(100次/月+裂变)、适配器框架、Mem0/Basic Memory 兼容 | ✅ |
 | — | npm 发布 @agent-memory/init | ⬜ |
 | — | PyPI 发布 agent-memory-mcp | ⬜ |
 
@@ -409,7 +413,7 @@ MCP 层 (server.py)   — 薄胶水，MCP 协议适配 + 审计日志
 
 | 工具 | 参数 | 说明 |
 |------|------|------|
-| `remember` | `content`, `tags`, `importance`, `auto_verify`, `project_id`, `process` | 存储记忆（可选 LLM 加工），委托 core.remember() |
+| `remember` | `content`, `tags`, `project_id`, `process` | 存储记忆（可选 LLM 加工），委托 core.remember() |
 | `recall` | `query`, `limit`, `project_id`, `process` | 语义搜索记忆，委托 core.recall() |
 | `summarize` | `context` | 会话总结并更新任务，委托 core.summarize() |
 | `forget` | `memory_id` | 通过 ID 精确删除一条记忆，调用 mem0_backend.delete() |
@@ -426,7 +430,8 @@ MCP 层 (server.py)   — 薄胶水，MCP 协议适配 + 审计日志
 - metadata：user_id, project_id, tags, created_at
 - 搜索：支持 `$and` 语法的多条件过滤
 - 距离函数：cosine
-- 提供：`add()`, `search()`, `delete()`, `stats()`, `list_all()`
+- 提供：`add()`, `search()`, `delete()`, `update()`, `stats()`, `list_all()`
+- update()：删除原记录 → 保留 metadata → 重新插入新内容
 
 **task_backend.py — SQLite 结构化存储：**
 
@@ -437,7 +442,21 @@ MCP 层 (server.py)   — 薄胶水，MCP 协议适配 + 审计日志
 - beads 同步：单向增量读取 `.beads/issues.jsonl`，BOM 安全（utf-8-sig）
 - 所有 CRUD 函数使用 `contextlib.closing` 确保连接异常安全
 
-### 6.4 测试（共 52 个）
+**quota.py — SQLite 编辑配额：**
+
+- 基础配额：100 次/月
+- 裂变推荐：每成功邀请一位 +50 次
+- 安装 ID 自动生成（UUID 前 8 位），无需用户认证
+- 提供：`get_quota()`, `increment_usage()`, `can_edit()`, `add_referral()`, `get_install_id()`
+
+**adapters/ — 第三方存储适配器：**
+
+- `base.py`：`MemoryAdapter` 抽象基类（`list_all`, `get`, `name`）
+- `mem0_adapter.py`：读取 Mem0（Qdrant）存储的记忆
+- `md_adapter.py`：读取 Basic Memory 的 Markdown 文件
+- 通过 `core.register_adapter()` 注册，`core.get_adapters()` 查询
+
+### 6.4 测试（共 97 个）
 
 ```bash
 cd packages/mcp-server
@@ -449,8 +468,14 @@ pytest
 pytest tests/test_task_backend.py -v   # 16 个 — 任务 CRUD + beads 同步
 pytest tests/test_processor.py -v      # 13 个 — LLM 提取/重排
 pytest tests/test_cli.py -v            # 7 个 — CLI 命令
-pytest tests/test_mem0_backend.py -v   # 6 个 — 向量后端
+pytest tests/test_mem0_backend.py -v   # 9 个 — 向量后端（含 update）
 pytest tests/test_md_backend.py -v     # 4 个 — Markdown 后端
+pytest tests/test_core.py -v           # 11 个 — 核心层（remember/recall/summarize/适配器注册）
+pytest tests/test_server.py -v         # 13 个 — MCP 服务集成
+pytest tests/test_quota.py -v          # 4 个 — 编辑配额 + 裂变
+pytest tests/test_adapters.py -v       # 2 个 — 适配器接口
+pytest tests/test_summarize.py -v      # 3 个 — 会话摘要
+pytest tests/test_audit.py -v          # 3 个 — 审计日志
 pytest tests/test_summarize.py -v      # 3 个 — 摘要生成
 pytest tests/test_audit.py -v          # 3 个 — 审计日志
 ```
