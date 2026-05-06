@@ -161,7 +161,8 @@ class TestSummarize:
                         assert result["file"] == "/path/to/summary.md"
                         assert result["facts"] == ["fact 1", "fact 2"]
                         assert result["task_completed"] is True
-                        assert mock_add.call_count == 2
+                        assert mock_add.call_count == 3  # summary + 2 facts
+                        mock_add.assert_any_call("Session summary", tags=["auto-summary"], project_id="test-p")
                         mock_add.assert_any_call("fact 1", tags=["auto-extracted"], project_id="test-p")
                         mock_add.assert_any_call("fact 2", tags=["auto-extracted"], project_id="test-p")
 
@@ -172,7 +173,7 @@ class TestSummarize:
                 with patch("agent_memory_mcp.core.mem0_backend.add") as mock_add:
                     with patch("agent_memory_mcp.core.sync_beads"):
                         summarize("context", project_id="p")
-                        mock_add.assert_not_called()
+                        mock_add.assert_called_once_with("Session", tags=["auto-summary"], project_id="p")
 
 
 class TestAdapterRegistry:
