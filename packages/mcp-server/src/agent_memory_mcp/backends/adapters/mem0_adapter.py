@@ -1,7 +1,10 @@
 """Mem0 适配器 — 读取 Mem0 的 Qdrant 存储数据。"""
 
+import logging
 from pathlib import Path
 from agent_memory_mcp.backends.adapters.base import MemoryAdapter
+
+logger = logging.getLogger(__name__)
 
 
 class Mem0Adapter(MemoryAdapter):
@@ -34,9 +37,12 @@ class Mem0Adapter(MemoryAdapter):
             client = QdrantClient(path=str(mem0_dir))
             collections = client.get_collections().collections
             for col in collections:
+                scroll_limit = min(limit - len(results), 50)
+                if scroll_limit <= 0:
+                    break
                 points = client.scroll(
                     collection_name=col.name,
-                    limit=min(limit, 100),
+                    limit=scroll_limit,
                     with_payload=True,
                     with_vectors=False,
                 )
@@ -49,9 +55,9 @@ class Mem0Adapter(MemoryAdapter):
                         "score": 1.0,
                     })
         except ImportError:
-            pass
-        except Exception:
-            pass
+            logger.warning("qdrant_client not installed, Mem0Adapter unavailable")
+        except Exception as e:
+            logger.warning("Mem0Adapter.list_all error: %s", e)
 
         return results[:limit]
 
@@ -79,6 +85,8 @@ class Mem0Adapter(MemoryAdapter):
                             "metadata": point.payload,
                             "source": "mem0",
                         }
-        except Exception:
-            pass
+        except ImportError:
+            logger.warning("qdrant_client not installed, Mem0Adapter unavailable")
+        except Exception as e:
+            logger.warning("Mem0Adapter.get(%s) error: %s", memory_id, e)
         return None

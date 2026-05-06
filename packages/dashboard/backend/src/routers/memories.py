@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from backends import mem0_backend
+from agent_memory_mcp.backends import quota
 
 router = APIRouter(tags=["memories"])
 
@@ -14,10 +15,13 @@ class MemoryUpdate(BaseModel):
 
 @router.put("/memories/{memory_id}")
 def update_memory(memory_id: str, update: MemoryUpdate):
-    """编辑记忆内容。"""
+    """编辑记忆内容。自动校验配额并计数。"""
+    if not quota.can_edit():
+        raise HTTPException(status_code=403, detail="本月编辑配额已用完")
     ok = mem0_backend.update(memory_id, update.content)
     if not ok:
         raise HTTPException(status_code=404, detail="Memory not found")
+    quota.increment_usage()
     return {"status": "updated", "id": memory_id}
 
 
@@ -49,5 +53,11 @@ def export_memories(project_id: str | None = None):
 
 @router.delete("/memories/{memory_id}")
 def delete_memory(memory_id: str):
-    mem0_backend.delete(memory_id)
+    """删除记忆。自动校验配额并计数。"""
+    if not quota.can_edit():
+        raise HTTPException(status_code=403, detail="本月编辑配额已用完")
+    ok = mem0_backend.delete(memory_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    quota.increment_usage()
     return {"status": "deleted", "id": memory_id}

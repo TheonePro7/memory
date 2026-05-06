@@ -94,11 +94,16 @@ def increment_usage() -> dict:
 
 
 def add_referral(referral_code: str) -> dict:
-    """接受一个邀请码，双方各 +50。"""
+    """接受一个邀请码，双方各 +50。返回错误信息而非异常。"""
     conn, my_id = _get_conn()
     if referral_code == my_id:
         conn.close()
         return {"error": "不能推荐自己"}
+
+    cur = conn.execute("SELECT id FROM install WHERE id = ?", (referral_code,))
+    if not cur.fetchone():
+        conn.close()
+        return {"error": "邀请码不存在"}
 
     conn.execute("""
         INSERT INTO referrals (install_id, bonus, referred_by) VALUES (?, ?, ?)

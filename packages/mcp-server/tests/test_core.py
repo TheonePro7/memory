@@ -179,21 +179,18 @@ class TestAdapterRegistry:
     def test_register_and_get_adapters(self):
         from agent_memory_mcp.core import register_adapter, get_adapters
 
-        # 先清理
-        get_adapters().clear()
-
-        assert get_adapters() == []
+        before = len(get_adapters())
         mock = {"name": "test-adapter"}
         register_adapter(mock)
+        assert len(get_adapters()) == before + 1
         assert mock in get_adapters()
 
     def test_get_adapters_returns_copy(self):
         from agent_memory_mcp.core import register_adapter, get_adapters
-        get_adapters().clear()
 
+        before = len(get_adapters())
         mock = {"name": "test"}
         register_adapter(mock)
         result = get_adapters()
         result.clear()
-        # 原始列表不受影响
-        assert mock in get_adapters()
+        assert len(get_adapters()) == before + 1
