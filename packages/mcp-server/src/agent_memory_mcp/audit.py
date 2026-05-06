@@ -11,29 +11,29 @@ _MAX_RETENTION_DAYS = 90
 _AUDIT_DIR = Path.home() / ".agent-memory" / "audit"
 
 
-def _ensure_dir():
+def _ensure_dir() -> None:
     _AUDIT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _rotate_if_needed(path: Path):
+def _rotate_if_needed(path: Path) -> None:
     if path.exists() and path.stat().st_size > _MAX_LOG_BYTES:
         rotated = path.with_suffix(f".{datetime.now().strftime('%H%M%S')}.jsonl")
         path.rename(rotated)
 
 
-def _cleanup_old():
+def _cleanup_old() -> None:
     cutoff = datetime.now() - timedelta(days=_MAX_RETENTION_DAYS)
-    for f in _AUDIT_DIR.glob("*.jsonl"):
+    for f in _AUDIT_DIR.glob("*.jsonl*"):
+        stem = f.stem.split(".")[0] if "." in f.stem else f.stem
         try:
-            parts = f.stem.split(".")[0]
-            fdate = datetime.strptime(parts, "%Y-%m-%d")
+            fdate = datetime.strptime(stem, "%Y-%m-%d")
             if fdate < cutoff:
                 f.unlink()
-        except (ValueError, OSError):
+        except (ValueError, IndexError):
             pass
 
 
-def log(action: str, **detail):
+def log(action: str, **detail: str | int | bool | list[str]) -> None:
     _ensure_dir()
     today = datetime.now().strftime("%Y-%m-%d")
     path = _AUDIT_DIR / f"{today}.jsonl"

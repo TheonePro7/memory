@@ -2,6 +2,7 @@
 
 import sys
 import json
+import os
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -48,8 +49,9 @@ class TestCLI:
     def test_recall(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(sys, "argv", ["agent-memory", "recall"])
         cli.cmd_recall()
-        ctx_file = Path.home() / ".agent-memory" / "context.json"
-        assert ctx_file.exists()
+        pid = os.getpid()
+        ctx_file = Path.home() / ".agent-memory" / f"context.{pid}.json"
+        assert ctx_file.exists(), f"context.{pid}.json not found"
         data = json.loads(ctx_file.read_text(encoding="utf-8"))
         assert "mem0" in data
         assert "active_tasks" in data

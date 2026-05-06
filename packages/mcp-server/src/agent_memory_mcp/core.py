@@ -12,6 +12,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def append_session_log(content: str) -> None:
+    """追加内容到 current_session.txt，供 summarize 使用。"""
+    try:
+        log_file = Path.home() / ".agent-memory" / "current_session.txt"
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(content.strip() + "\n")
+    except Exception as e:
+        logger.warning("session log append failed: %s", e)
+
+
 def detect_project_id() -> str:
     """从 git root 目录名推断项目标识符，非 git 目录回退到 CWD 名。"""
     try:

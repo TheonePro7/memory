@@ -67,7 +67,7 @@ def _get_conn() -> sqlite3.Connection:
     return conn
 
 
-def _init_db():
+def _init_db() -> None:
     with closing(_get_conn()) as conn:
         conn.executescript(SCHEMA)
         conn.commit()
@@ -281,20 +281,10 @@ def sync_beads(project_id: str, project_path: str | Path = ".") -> dict:
                     now = _now()
                     conn.execute(
                         "INSERT INTO tasks (id, source, source_id, title, status, priority, project_id, tags, created_at, updated_at) "
-                        "VALUES (?, 'beads', ?, ?, 'todo', 'medium', ?, ?, ?, ?)",
-                        (tid, str(source_id), title, project_id,
+                        "VALUES (?, 'beads', ?, ?, ?, 'medium', ?, ?, ?, ?)",
+                        (tid, str(source_id), title, status or "todo", project_id,
                          ",".join(tags) if isinstance(tags, list) else None, now, now),
                     )
-                    if status != "todo":
-                        conn.execute(
-                            "UPDATE tasks SET status=?, updated_at=? WHERE id=?",
-                            (status, now, tid),
-                        )
-                        conn.execute(
-                            "INSERT INTO task_events (task_id, type, content, created_at) "
-                            "VALUES (?, 'status_change', ?, ?)",
-                            (tid, f"beads init: todo → {status}", now),
-                        )
                 synced += 1
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning("beads sync: skip invalid line: %s", e)

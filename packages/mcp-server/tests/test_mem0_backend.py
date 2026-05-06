@@ -29,9 +29,9 @@ class TestMem0Backend:
         ok = mem0_backend.delete(r["id"])
         assert ok is True
 
-        # 尝试删除不存在的 id
+        # 尝试删除不存在的 id 应返回 False
         ok2 = mem0_backend.delete("non-existent-id")
-        assert ok2 is True  # ChromaDB delete with non-existent id returns True
+        assert ok2 is False
 
     def test_stats(self):
         """统计返回 count"""

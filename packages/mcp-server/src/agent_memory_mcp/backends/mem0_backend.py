@@ -72,7 +72,9 @@ def add(
             return {"id": "", "backend": "mem0", "status": "error", "error": "empty content"}
         memory_id = str(uuid.uuid4())
         vector = _embed(content)
-        metadata = {"user_id": user_id}
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        metadata = {"user_id": user_id, "created_at": now}
         if project_id:
             metadata["project_id"] = project_id
         if tags:
@@ -135,8 +137,46 @@ def search(
         return []
 
 
-def delete(memory_id: str, user_id: str = "default") -> bool:
+def list_all(
+    user_id: str = "default",
+    project_id: str | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    """列出所有记忆，按添加顺序倒序排列。"""
     try:
+        col = _get_collection()
+        where: dict = {"user_id": user_id}
+        if project_id:
+            where = {"$and": [{"user_id": user_id}, {"project_id": project_id}]}
+        results = col.get(
+            where=where,
+            include=["documents", "metadatas"],
+            limit=limit,
+        )
+        ids = results.get("ids", [])
+        docs = results.get("documents", [])
+        metas = results.get("metadatas", [])
+        out = []
+        for i in range(len(ids)):
+            out.append({
+                "id": ids[i],
+                "memory": docs[i] if i < len(docs) else "",
+                "metadata": metas[i] if i < len(metas) else {},
+            })
+        # 倒序（最新的在前）
+        out.reverse()
+        return out
+    except Exception as e:
+        logger.error("list_all failed: %s", e)
+        return []
+
+
+def delete(memory_id: str) -> bool:
+    """通过 ID 删除一条记忆。先校验 ID 存在再删除。"""
+    try:
+        existing = _get_collection().get(ids=[memory_id], include=[])
+        if not existing or not existing.get("ids"):
+            return False
         _get_collection().delete(ids=[memory_id])
         return True
     except Exception as e:
