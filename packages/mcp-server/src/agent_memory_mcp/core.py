@@ -123,6 +123,8 @@ def summarize(context: str, project_id: str | None = None) -> dict:
     """会话总结：LLM 摘要 → 持久化 → 提取事实。"""
     result = generate_summary(context)
     path = md_backend.append_summary(result["summary"])
+    # 总是把摘要存为向量记忆，不依赖 API key（即使 fallback 截断也能存）
+    mem0_backend.add(result["summary"], tags=["auto-summary"], project_id=project_id)
     for fact in result.get("facts", []):
         mem0_backend.add(fact, tags=["auto-extracted"], project_id=project_id)
     sync_beads(project_id or "default")

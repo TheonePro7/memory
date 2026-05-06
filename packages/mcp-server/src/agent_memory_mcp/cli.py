@@ -14,8 +14,8 @@ def cmd_recall() -> None:
         project_id = detect_project_id()
         process = "--process" in sys.argv
 
-        # 使用 core.recall() 进行记忆搜索（包括重排序）
-        results = core_recall("当前项目上下文", project_id=project_id, limit=10, process=process)
+        # 搜全部项目记忆，不按 project_id 过滤（跨项目共享记忆池）
+        results = core_recall("当前项目上下文", project_id=None, limit=10, process=process)
         recent = md_backend.get_recent(days=3)
 
         # 同步 beads + 获取活跃任务
@@ -188,7 +188,8 @@ def cmd_remember() -> None:
             project_id = detect_project_id()
 
         # 使用 core.remember() 进行记忆存储（包括可选的 LLM 加工）
-        r = core_remember(content, tags=tags, project_id=project_id, process=process)
+        # project_id 传 None 以便跨项目共享记忆（所有 cli 操作的记忆归入共享池）
+        r = core_remember(content, tags=tags, project_id=None, process=process)
         append_session_log(content)
         print(json.dumps(r, ensure_ascii=False))
     except Exception as e:
