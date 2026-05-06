@@ -2,6 +2,14 @@
 
 import sys
 from pathlib import Path
+import json
+
+# 必须在 starlette 导入前 patch
+from starlette.responses import JSONResponse as _StarletteJSONResponse
+_original_render = _StarletteJSONResponse.render
+def _chinese_render(self, content) -> bytes:
+    return json.dumps(content, ensure_ascii=False).encode("utf-8")
+_StarletteJSONResponse.render = _chinese_render
 
 # 支持作为脚本直接运行
 sys.path.insert(0, str(Path(__file__).resolve().parent))
