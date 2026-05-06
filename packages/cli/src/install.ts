@@ -1,6 +1,6 @@
 import { join } from "path";
 import {
-  resolveTargetDir, hasDryRun, detectPython,
+  resolveTargetDir, hasDryRun, getReferralCode, detectPython,
   pipInstall, pipInstallRequirements,
   writeSettingsJson, writeHooksJson,
   writeAgentMemoryConfig, updateClaudeMd,
@@ -78,7 +78,19 @@ export function runInstall(argv: string[]): InstallResult {
     console.log("  ✓ CLAUDE.md updated");
   }
 
-  // Step 5: report
+  // Step 5: handle referral
+  const referCode = getReferralCode(argv);
+  if (referCode && py.ok && !dryRun) {
+    try {
+      const { execSync } = require("child_process");
+      execSync(`python -m agent_memory_mcp.cli refer ${referCode}`, { stdio: "pipe", timeout: 10000 });
+      console.log(`  ✓ Referral code "${referCode}" applied (+50 bonus)`);
+    } catch {
+      console.warn(`  ⚠ Failed to apply referral code "${referCode}"`);
+    }
+  }
+
+  // Step 6: report
   const success = warnings.length === 0;
   if (success) {
     console.log("\n✓ Installation complete! Restart Claude Code.");

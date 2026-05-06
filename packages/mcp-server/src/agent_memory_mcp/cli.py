@@ -199,7 +199,7 @@ def cmd_remember() -> None:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: agent-memory remember|recall|summarize|task", file=sys.stderr)
+        print("Usage: agent-memory remember|recall|summarize|task|refer [referral_code]", file=sys.stderr)
         sys.exit(1)
     cmd = sys.argv[1]
     if cmd == "remember":
@@ -209,7 +209,14 @@ def main() -> None:
     elif cmd == "summarize":
         cmd_summarize()
     elif cmd == "refer":
-        print(f"你的邀请码: {quota.get_install_id()}")
+        if len(sys.argv) > 2:
+            result = quota.add_referral(sys.argv[2])
+            if "error" in result:
+                print(f"使用邀请码失败: {result['error']}", file=sys.stderr)
+                sys.exit(1)
+            print(f"邀请码 {sys.argv[2]} 使用成功！你的编辑额度已 +50")
+        else:
+            print(f"你的邀请码: {quota.get_install_id()}")
     elif cmd == "task":
         cmd_task()
     else:

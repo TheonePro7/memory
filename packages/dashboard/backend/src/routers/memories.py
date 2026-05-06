@@ -5,12 +5,36 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from backends import mem0_backend
 from agent_memory_mcp.backends import quota
+from agent_memory_mcp.core import get_adapters
 
 router = APIRouter(tags=["memories"])
 
 
 class MemoryUpdate(BaseModel):
     content: str
+
+
+class ImportPayload(BaseModel):
+    version: str = "1.0"
+    memories: list[dict] = []
+
+
+@router.post("/memories/import")
+def import_memories(payload: ImportPayload):
+    """导入记忆（JSON 格式）。"""
+    count = 0
+    errors = 0
+    for mem in payload.memories:
+        content = mem.get("memory") or mem.get("content", "")
+        if not content.strip():
+            errors += 1
+            continue
+        result = mem0_backend.add(content, project_id=mem.get("metadata", {}).get("project_id"))
+        if result.get("status") == "stored":
+            count += 1
+        else:
+            errors += 1
+    return {"imported": count, "errors": errors, "total": len(payload.memories)}
 
 
 @router.put("/memories/{memory_id}")
@@ -36,6 +60,13 @@ def list_memories(q: str = "", project_id: str | None = None, agent: str | None 
                 results = reranked
     else:
         results = mem0_backend.list_all(project_id=project_id, limit=limit)
+        # 合并第三方适配器数据
+        for adapter in get_adapters():
+            try:
+                adapter_results = adapter.list_all(limit=limit)
+                results.extend(adapter_results)
+            except Exception:
+                pass
     if agent and results:
         results = [r for r in results if r.get("metadata", {}).get("agent") == agent]
     return {"results": results, "total": len(results)}

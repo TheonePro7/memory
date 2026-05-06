@@ -1,0 +1,1 @@
+﻿[{"id":"arch-1","title":"FastAPI + ChromaDB + React + MCP","decision":"Use FastAPI for backend, ChromaDB for vector storage, React for dashboard, MCP for Claude integration"}]

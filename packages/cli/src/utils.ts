@@ -22,6 +22,14 @@ export function hasDryRun(argv: string[]): boolean {
   return argv.includes("--dry-run");
 }
 
+export function getReferralCode(argv: string[]): string | null {
+  const idx = argv.indexOf("--refer");
+  if (idx >= 0 && idx + 1 < argv.length) {
+    return argv[idx + 1];
+  }
+  return null;
+}
+
 export function detectPython(): { ok: boolean; version: string; pipCmd: string } {
   try {
     const out = execSync("python3 --version", { encoding: "utf-8", stdio: "pipe" }).trim();

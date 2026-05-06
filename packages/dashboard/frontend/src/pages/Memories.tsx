@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Input, Table, Tag, Typography, Space, Select, Button, Modal, Divider, Tooltip } from "antd";
-import { SearchOutlined, EditOutlined, DeleteOutlined, FolderOutlined, PlusOutlined } from "@ant-design/icons";
+import { SearchOutlined, EditOutlined, DeleteOutlined, FolderOutlined, PlusOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { COLORS } from "../theme";
 
@@ -94,12 +94,28 @@ export default function Memories() {
     if (res.remaining <= 0) {
       Modal.info({
         title: "本月免费编辑次数已用完",
+        width: 440,
         content: (
           <div>
-            <p>邀请朋友安装，每成功一位 +50 次：</p>
-            <Input value={installId} readOnly style={{ marginBottom: 16 }} />
+            <p style={{ marginBottom: 12, fontWeight: 500, color: COLORS.text.primary }}>
+              🔥 邀请朋友安装，每成功一位 +50 次
+            </p>
+            <Input value={installId} readOnly style={{ marginBottom: 8 }} />
+            <p style={{ fontSize: 12, color: COLORS.text.tertiary, marginBottom: 16 }}>
+              已获得加成: +{res.bonus} 次
+            </p>
             <Divider />
-            <p>或升级 Pro 获得无限编辑 (即将上线)</p>
+            <p style={{ fontWeight: 500, color: COLORS.text.primary, marginBottom: 8 }}>
+              或升级 Pro 获得无限编辑
+            </p>
+            <ul style={{ fontSize: 13, color: COLORS.text.secondary, paddingLeft: 16, lineHeight: 1.8 }}>
+              <li>无限编辑和删除</li>
+              <li>批量清理和管理</li>
+              <li>优先级标记</li>
+            </ul>
+            <p style={{ fontSize: 20, fontWeight: 700, color: COLORS.accent.blue, margin: "12px 0", textAlign: "center" }}>
+              $15 / 月
+            </p>
           </div>
         ),
       });
@@ -260,7 +276,60 @@ export default function Memories() {
             options={agentOptions.map((a) => ({ value: a, label: a }))}
           />
         </Space>
-        <Tag
+        <Space size={8}>
+          <Tooltip title="导出记忆">
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={async () => {
+                const res = await fetch("/api/memories/export").then(r => r.json());
+                const blob = new Blob([JSON.stringify(res, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `agent-memories-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              size="small"
+              style={{ color: COLORS.text.secondary }}
+            />
+          </Tooltip>
+          <Tooltip title="导入记忆">
+            <Button
+              icon={<UploadOutlined />}
+              onClick={() => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = ".json";
+                input.onchange = async (e: any) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const text = await file.text();
+                  try {
+                    const data = JSON.parse(text);
+                    if (!data.memories) { alert("无效的导入文件格式"); return; }
+                    const res = await fetch("/api/memories/import", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(data),
+                    });
+                    const result = await res.json();
+                    Modal.success({
+                      title: "导入完成",
+                      content: `成功导入 ${result.imported} 条，失败 ${result.errors} 条`,
+                    });
+                    search(query, projectFilter, agentFilter);
+                  } catch {
+                    alert("无效的 JSON 文件");
+                  }
+                };
+                input.click();
+              }}
+              size="small"
+              style={{ color: COLORS.text.secondary }}
+            />
+          </Tooltip>
+          <Tag
           style={{
             fontSize: 12,
             padding: "4px 12px",
@@ -281,6 +350,14 @@ export default function Memories() {
         loading={loading}
         pagination={{ pageSize: 20, size: "small" }}
         rowKey={(r) => r.id || r.memory || Math.random().toString()}
+        locale={{
+          emptyText: memories.length === 0 && !loading ? (
+            <div style={{ padding: "32px 0", color: COLORS.text.tertiary }}>
+              <p style={{ fontSize: 15, marginBottom: 8 }}>你的 Agent 还没有记住任何信息</p>
+              <p style={{ fontSize: 13 }}>使用 Agent 工作时，关键信息会自动记录到这里</p>
+            </div>
+          ) : undefined,
+        }}
         size="middle"
       />
 

@@ -24,18 +24,20 @@ if (!COMMANDS.has(command)) {
     case "--help":
     case "help":
       console.log(`Usage:
-  npx @ivanston/init [path] [--dry-run]
+  npx @ivanston/init [path] [--dry-run] [--refer <code>]
   npx @ivanston/remove [path] [--dry-run]
 
 Options:
-  --dry-run  检测环境但不写任何文件
-  path       目标项目路径（默认当前目录）
+  --dry-run         检测环境但不写任何文件
+  --refer <code>    使用邀请码，双方各 +50 次编辑额度
+  path              目标项目路径（默认当前目录）
 
 Examples:
-  npx @ivanston/init                     当前目录安装
-  npx @ivanston/init ./my-project        指定项目
-  npx @ivanston/init --dry-run           仅检测环境
-  npx @ivanston/remove                   卸载当前项目`);
+  npx @ivanston/init                              当前目录安装
+  npx @ivanston/init ./my-project                 指定项目
+  npx @ivanston/init --dry-run                    仅检测环境
+  npx @ivanston/init --refer IVAN-7X9K            使用邀请码安装
+  npx @ivanston/remove                            卸载当前项目`);
       break;
     default:
       console.error(`Unknown command: ${command}`);
