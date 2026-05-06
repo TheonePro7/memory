@@ -28,13 +28,16 @@ python packages/dashboard/backend/src/main.py
 
 ```bash
 # 记住一条信息
-python packages/python-cli/src/main.py remember "内容" --tags tag1,tag2
+python -m agent_memory_mcp.cli remember "内容" --tags tag1,tag2
 
 # 搜索当前项目的记忆（自动按项目隔离）
-python packages/python-cli/src/main.py recall
+python -m agent_memory_mcp.cli recall
 
 # 指定其他项目
-python packages/python-cli/src/main.py remember "内容" --project-id other-project
+python -m agent_memory_mcp.cli remember "内容" --project-id other-project
+
+# 查看裂变邀请码
+python -m agent_memory_mcp.cli refer
 ```
 
 ## 系统架构
@@ -42,18 +45,38 @@ python packages/python-cli/src/main.py remember "内容" --project-id other-proj
 ```
 memory/
 ├── packages/
-│   ├── mcp-server/       # MCP 服务（记忆读写）
-│   ├── python-cli/       # CLI 工具（Hook 调用）
+│   ├── mcp-server/       # MCP 服务 + CLI（核心后端）
+│   │   └── src/agent_memory_mcp/
+│   │       ├── server.py        # MCP 协议薄胶水
+│   │       ├── core.py          # 业务逻辑编排层
+│   │       ├── cli.py           # Shell 命令入口
+│   │       ├── processor.py     # LLM 实体提取/重排序
+│   │       ├── summarize.py     # 会话摘要
+│   │       ├── audit.py         # 操作审计日志
+│   │       ├── backends/
+│   │       │   ├── mem0_backend.py  # ChromaDB 向量存储
+│   │       │   ├── md_backend.py    # Markdown 会话日志
+│   │       │   ├── task_backend.py  # SQLite 任务管理
+│   │       │   ├── quota.py         # 编辑配额 + 裂变
+│   │       │   └── adapters/        # 第三方适配器
+│   │       │       ├── base.py          # 抽象基类
+│   │       │       ├── mem0_adapter.py  # Mem0 读取
+│   │       │       └── md_adapter.py    # Basic Memory 读取
+│   │       └── tests/           # 97 个测试
 │   ├── dashboard/        # Web 管理界面
-│   │   ├── backend/      # FastAPI 后端
+│   │   ├── backend/      # FastAPI 后端（记忆/配额/统计 API）
 │   │   └── frontend/     # React + Ant Design 前端
-│   └── cli/              # TypeScript CLI（开发中）
+│   └── cli/              # TypeScript 安装器（开发中）
 ├── scripts/
 │   ├── setup.ps1         # Windows 安装脚本
 │   └── setup.sh          # Linux/macOS 安装脚本
 ├── .claude/
 │   ├── settings.local.json   # MCP 服务配置
 │   └── hooks.json            # 自动 recall/summarize
+├── docs/
+│   ├── project-overview.md   # 项目文档
+│   └── project-management.md # 项目管理
+├── CHANGELOG.md
 └── ~/.agent-memory/chroma/   # 中央向量数据库（跨项目共享）
 ```
 
