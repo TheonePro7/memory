@@ -1,0 +1,96 @@
+{
+  "phase": 0,
+  "stage": "complete",
+  "feature": "V1.0 记忆管理产品",
+  "outputs": {
+    "problemStatement": "全球 12+ 家公司在做 Agent 记忆存储，但没有一家在做记忆管理。Agent 记错了没人知道，记重复了没人清理，换了记忆系统数据带不走。在人机协同时代，人类需要看得见 Agent 在记什么、改得了记错的内容、管得住记忆的演化。",
+    "personas": [
+      {
+        "name": "个人 AI 开发者",
+        "identity": "使用 Claude Code / Cursor / Windsurf 的开发者",
+        "need": "看到 Agent 记住了什么、能纠错、能清理",
+        "pain": "Agent 记忆是黑盒，错了也不知道"
+      },
+      {
+        "name": "AI 团队负责人",
+        "identity": "管理 3-10 人 AI 开发者团队",
+        "need": "团队记忆管理、合规审计、统一策略",
+        "pain": "多个开发者的 Agent 记忆碎片化，无法统一管控"
+      },
+      {
+        "name": "企业 AI 平台运维",
+        "identity": "内部部署了 Agent 系统的运维人员",
+        "need": "记忆审计、敏感信息清洗、数据迁移",
+        "pain": "Agent 记忆包含敏感信息，无法审计和清洗"
+      },
+      {
+        "name": "自建 Agent 用户",
+        "identity": "使用 OpenCLAW / LangChain / CrewAI 等框架自建 Agent",
+        "need": "统一管理多个 Agent 的记忆，能看到每个 Agent 记住了什么",
+        "pain": "多个 Agent 并行运行，记忆碎片化严重，没有统一管理界面"
+      }
+    ],
+    "userStories": [
+      "作为个人开发者，我想浏览我的 Agent 记住了哪些内容，以便确认它没有记错",
+      "作为个人开发者，我想编辑或删除一条错误记忆，以便 Agent 下次 recall 时拿到正确的数据",
+      "作为个人开发者，我想看到每条记忆的来源和创建时间，以便追溯它的上下文",
+      "作为自建 Agent 用户，我想在一个界面里看到所有 Agent 的记忆，以便统一管理",
+      "作为自建 Agent 用户，我想兼容我已有的记忆存储（Mem0/文件等），以便不丢失历史数据",
+      "作为团队负责人，我想控制哪些信息该记、哪些不该记，以便减少噪声",
+      "作为企业运维，我想批量清理包含敏感信息的记忆，以便合规",
+      "作为企业运维，我想把记忆从一套系统迁移到另一套，以便更换底层基础设施"
+    ],
+    "features": {
+      "must": [
+        "记忆浏览器 - 统一浏览所有记忆，无论底层用哪个后端",
+        "记忆编辑/删除 - 单条修改和删除，每月 50 次免费",
+        "编辑超限升级引导 - 第 51 次提示升级 Pro",
+        "同步层 - 写自有存储 + 可选写第三方",
+        "Mem0 适配器 - 读取 Mem0 的 Qdrant 存储数据",
+        "Basic Memory 适配器 - 读取 Markdown 文件记忆"
+      ],
+      "should": [
+        "导入/导出 - JSON 标准格式迁移",
+        "付费 Pro 版 - 无限编辑 + 批量操作",
+        "首次引导 - 安装后展示'你的 Agent 记住了 N 条信息'"
+      ],
+      "could": [
+        "冲突检测 - 矛盾记忆自动标记",
+        "版本回溯 - 记忆历史版本可回滚",
+        "审计日志 - 谁在什么时间改了什么"
+      ],
+      "wont": [
+        "用户认证系统（V1.0 用本地计数）",
+        "自托管部署（V1.0 全部本地运行）",
+        "批量操作（后续版本）",
+        "团队协作（后续版本）",
+        "策略配置（后续版本）",
+        "Zep 适配器（后续版本）"
+      ]
+    },
+    "constraints": {
+      "techStack": {
+        "vectorDB": "ChromaDB（已有，不改）",
+        "embedding": "fastembed（已有，不改）",
+        "protocol": "MCP（已有，不改）",
+        "frontend": "React + Ant Design（已有，不改）",
+        "installer": "TypeScript CLI, npx @ivanston/init（已有，不改）",
+        "backend": "Python FastAPI（已有，不改）"
+      },
+      "timeline": "1 周（单人全职）",
+      "platform": "本地运行，跨平台（Windows/macOS/Linux）",
+      "scope": "不做认证、不做自托管、不做批量操作、不做 Zep 适配器"
+    },
+    "successMetrics": {
+      "qualitative": "用户能在 Dashboard 里浏览全部记忆并成功编辑/删除",
+      "quantitative": {
+        "year1": {
+          "freeUsers": 2000,
+          "paidUsers": 200,
+          "managedMemories": 1000000,
+          "monthlyRevenue": 5000
+        }
+      }
+    }
+  }
+}

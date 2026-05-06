@@ -16,7 +16,12 @@
       "WebFetch(domain:www.google.com)",
       "WebFetch(domain:ui8.net)",
       "WebFetch(domain:linear.app)",
-      "WebFetch(domain:vercel.com)"
+      "WebFetch(domain:vercel.com)",
+      "WebFetch(domain:www.cnblogs.com)",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:www.e-com-net.com)",
+      "WebFetch(domain:json.schemastore.org)",
+      "WebFetch(domain:www.schemastore.org)"
     ],
     "defaultMode": "dontAsk",
     "additionalDirectories": [
@@ -34,6 +39,30 @@
   },
   "hooks": {
     "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -File .claude/hooks/devflow-phase-check.ps1",
+            "shell": "powershell",
+            "timeout": 3,
+            "statusMessage": "devflow: checking phase..."
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/devflow-phase-check.sh",
+            "shell": "bash",
+            "timeout": 3,
+            "statusMessage": "devflow: checking phase..."
+          }
+        ]
+      },
       {
         "matcher": "Bash",
         "hooks": [
