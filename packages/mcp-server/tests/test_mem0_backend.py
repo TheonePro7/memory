@@ -1,6 +1,8 @@
 import sys
+import unittest
 import pytest
 from pathlib import Path
+from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from agent_memory_mcp.backends import mem0_backend
 
@@ -82,3 +84,38 @@ class TestMem0Backend:
         assert r["status"] == "stored"
         ok = mem0_backend.update(r["id"], "")
         assert ok is False
+
+    def test_update_rollback_on_reinsert_failure(self):
+        """重插入失败时自动回滚"""
+        content = "回滚测试原始内容"
+        r = mem0_backend.add(content, project_id="test-mem0")
+        rid = r["id"]
+
+        # Mock _embed 让第一次调用（新内容嵌入）正常，第二次调用（回滚嵌入）也正常
+        # 但让 _get_collection().add() 在重插入时抛出异常
+        from agent_memory_mcp.backends.mem0_backend import _get_collection
+
+        real_add = _get_collection().add
+        add_count = 0
+
+        def mock_add(*args, **kwargs):
+            nonlocal add_count
+            add_count += 1
+            if add_count == 1:  # 重插入（delete 后的第一次 add）
+                raise RuntimeError("模拟重插入失败")
+            return real_add(*args, **kwargs)
+
+        with patch("agent_memory_mcp.backends.mem0_backend._get_collection") as mock_get_coll:
+            mock_coll = mock_get_coll.return_value
+            # 让 get/delete 调真实方法
+            real_collection = _get_collection()
+            mock_coll.get = real_collection.get
+            mock_coll.delete = real_collection.delete
+            mock_coll.add = mock_add
+
+            ok = mem0_backend.update(rid, "新内容")
+            assert ok is False, "重插入失败应返回 False"
+
+        # 验证原始内容仍然可搜索到（回滚成功）
+        results = mem0_backend.search("回滚测试原始内容", project_id="test-mem0")
+        assert any(content in m.get("memory", "") for m in results)

@@ -25,6 +25,10 @@ __pycache__/
 build/
 memory/
 
+# Dashboard frontend TypeScript compile artifacts
+packages/dashboard/frontend/src/**/*.js
+packages/dashboard/frontend/src/**/*.js.map
+
 # Brainstorming visual companion
 .superpowers/
 

@@ -60,3 +60,25 @@ class TestCLI:
         monkeypatch.setattr(sys, "argv", ["agent-memory", "invalid"])
         with pytest.raises(SystemExit):
             cli.main()
+
+    def test_remember_basic(self, monkeypatch: pytest.MonkeyPatch, capsys):
+        """基础 remember 命令输出 JSON"""
+        monkeypatch.setattr(sys, "argv", ["agent-memory", "remember", "测试内容"])
+        cli.cmd_remember()
+        captured = capsys.readouterr()
+        out = json.loads(captured.out)
+        assert "status" in out
+
+    def test_remember_with_tags(self, monkeypatch: pytest.MonkeyPatch, capsys):
+        """带标签的 remember"""
+        monkeypatch.setattr(sys, "argv", ["agent-memory", "remember", "带标签的内容", "--tags", "tag1,tag2"])
+        cli.cmd_remember()
+        captured = capsys.readouterr()
+        out = json.loads(captured.out)
+        assert "status" in out
+
+    def test_remember_no_args_exits(self, monkeypatch: pytest.MonkeyPatch):
+        """不带参数应退出"""
+        monkeypatch.setattr(sys, "argv", ["agent-memory", "remember"])
+        with pytest.raises(SystemExit):
+            cli.cmd_remember()
