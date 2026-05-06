@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Input, Table, Tag, Typography, Space, Select, Button, Modal } from "antd";
+import { Input, Table, Tag, Typography, Space, Select, Button, Modal, Divider } from "antd";
 import { SearchOutlined, FolderOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
@@ -17,6 +17,8 @@ export default function Memories() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<string[]>([]);
+  const [quota, setQuota] = useState({ used: 0, total: 100, remaining: 100, bonus: 0 });
+  const [installId, setInstallId] = useState("");
 
   const search = (q: string, pid?: string) => {
     setLoading(true);
@@ -43,6 +45,11 @@ export default function Memories() {
     search("", projectFilter);
   }, []);
 
+  useEffect(() => {
+    fetch("/api/quota").then(r => r.json()).then(setQuota);
+    fetch("/api/install-id").then(r => r.json()).then(d => setInstallId(d.id)).catch(() => {});
+  }, []);
+
   const handleProjectChange = (value: string | null) => {
     const pid = value ?? undefined;
     setProjectFilter(pid);
@@ -57,10 +64,32 @@ export default function Memories() {
       title: "确认删除",
       content: `确定要删除这条记忆吗？\n"${(memory.memory || "").slice(0, 50)}..."`,
       onOk: async () => {
+        if (!(await checkQuota())) return;
         await fetch(`/api/memories/${memory.id}`, { method: "DELETE" });
+        await fetch("/api/quota/increment", { method: "POST" });
+        setQuota(await fetch("/api/quota").then(r => r.json()));
         search(query, projectFilter);
       },
     });
+  };
+
+  const checkQuota = async (): Promise<boolean> => {
+    const res = await fetch("/api/quota").then(r => r.json());
+    if (res.remaining <= 0) {
+      Modal.info({
+        title: "本月免费编辑次数已用完",
+        content: (
+          <div>
+            <p>邀请朋友安装，每成功一位 +50 次：</p>
+            <Input value={installId} readOnly style={{ marginBottom: 16 }} />
+            <Divider />
+            <p>或升级 Pro 获得无限编辑 (即将上线)</p>
+          </div>
+        ),
+      });
+      return false;
+    }
+    return true;
   };
 
   const columns: ColumnsType<Memory> = [
@@ -152,6 +181,9 @@ export default function Memories() {
           onChange={handleProjectChange}
           options={projects.map((p) => ({ value: p, label: p }))}
         />
+        <Tag icon={<EditOutlined />} color={quota.remaining > 20 ? "blue" : "orange"}>
+          本月编辑: {quota.used}/{quota.total} {quota.bonus > 0 ? `⚡+${quota.bonus}` : ""}
+        </Tag>
       </Space>
       <Table
         dataSource={memories}
@@ -165,11 +197,14 @@ export default function Memories() {
         open={editModal.visible}
         onOk={async () => {
           if (!editModal.memory?.id) return;
+          if (!(await checkQuota())) return;
           await fetch(`/api/memories/${editModal.memory.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content: editContent }),
           });
+          await fetch("/api/quota/increment", { method: "POST" });
+          setQuota(await fetch("/api/quota").then(r => r.json()));
           setEditModal({ visible: false, memory: null });
           search(query, projectFilter);
         }}

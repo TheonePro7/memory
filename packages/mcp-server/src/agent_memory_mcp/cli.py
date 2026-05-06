@@ -5,7 +5,7 @@ import sys
 import json
 from pathlib import Path
 
-from agent_memory_mcp.backends import mem0_backend, md_backend
+from agent_memory_mcp.backends import mem0_backend, md_backend, quota
 from agent_memory_mcp.core import recall as core_recall, remember as core_remember, summarize as core_summarize, detect_project_id, append_session_log
 
 
@@ -207,6 +207,8 @@ def main() -> None:
         cmd_recall()
     elif cmd == "summarize":
         cmd_summarize()
+    elif cmd == "refer":
+        print(f"你的邀请码: {quota.get_install_id()}")
     elif cmd == "task":
         cmd_task()
     else:
