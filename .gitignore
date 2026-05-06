@@ -18,6 +18,13 @@ __pycache__/
 # Local memory data
 .memory/
 
+# Agent worktrees
+.agents/
+
+# Build artifacts
+build/
+memory/
+
 # Brainstorming visual companion
 .superpowers/
 
