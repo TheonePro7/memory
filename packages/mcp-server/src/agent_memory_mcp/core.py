@@ -9,6 +9,19 @@ from agent_memory_mcp.summarize import generate_summary
 from agent_memory_mcp.backends.task_backend import sync_beads
 import logging
 
+# 已注册的第三方适配器（启动时注册）
+_third_party_adapters: list = []
+
+
+def register_adapter(adapter) -> None:
+    """注册一个第三方记忆适配器。"""
+    _third_party_adapters.append(adapter)
+
+
+def get_adapters() -> list:
+    """返回已注册的适配器列表。"""
+    return list(_third_party_adapters)
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,8 +75,13 @@ def remember(
     tags: list[str] | None = None,
     project_id: str | None = None,
     process: bool = False,
+    sync_third_party: bool = True,
 ) -> dict:
-    """记忆存储：可选 LLM 加工 → 向量存储。"""
+    """记忆存储：可选 LLM 加工 → 向量存储 → 可选同步到第三方。
+
+    Args:
+        sync_third_party: 是否同步写入已注册的第三方适配器
+    """
     entities = actions = llm_summary = None
     if process:
         result = extract(content)
@@ -73,8 +91,16 @@ def remember(
             llm_summary = result.get("summary")
             if result.get("tags"):
                 tags = list(set((tags or []) + result["tags"]))
-    return mem0_backend.add(content, project_id=project_id, tags=tags,
-                            entities=entities, actions=actions, llm_summary=llm_summary)
+
+    # 总是写自有存储
+    result = mem0_backend.add(content, project_id=project_id, tags=tags,
+                              entities=entities, actions=actions, llm_summary=llm_summary)
+
+    # 可选同步 — 写第三方适配器（V1.0 适配器只读，写第三方后续版本实现）
+    if sync_third_party:
+        pass  # 预留：未来可扩展写第三方适配器
+
+    return result
 
 
 def recall(
