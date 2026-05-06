@@ -1,20 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { ConfigProvider, Layout, Menu, Typography, theme } from "antd";
-import type { ThemeConfig } from "antd";
+import { ConfigProvider, Layout, Typography, Space } from "antd";
 import {
-  HomeOutlined,
+  BarChartOutlined,
   DatabaseOutlined,
-  ClockCircleOutlined,
-  SettingOutlined,
+  ApiOutlined,
+  HistoryOutlined,
   CheckSquareOutlined,
+  SettingOutlined,
 } from "@ant-design/icons";
+import { themeConfig, COLORS } from "./theme";
 import Overview from "./pages/Overview";
 import Memories from "./pages/Memories";
+import Agents from "./pages/Agents";
 import Timeline from "./pages/Timeline";
-import Settings from "./pages/Settings";
 import Tasks from "./pages/Tasks";
+import SettingsPage from "./pages/Settings";
 
-const { Sider, Content } = Layout;
+const { Header, Content } = Layout;
 
 export interface Stats {
   total_memories: number;
@@ -22,38 +24,30 @@ export interface Stats {
   recent_sessions: string[];
 }
 
-const menuItems = [
-  { key: "overview", icon: <HomeOutlined />, label: "总览" },
-  { key: "memories", icon: <DatabaseOutlined />, label: "记忆浏览" },
-  { key: "timeline", icon: <ClockCircleOutlined />, label: "时间线" },
+interface NavItem {
+  key: string;
+  icon: React.ReactNode;
+  label: string;
+}
+
+const navItems: NavItem[] = [
+  { key: "overview", icon: <BarChartOutlined />, label: "总览" },
+  { key: "memories", icon: <DatabaseOutlined />, label: "记忆" },
+  { key: "agents", icon: <ApiOutlined />, label: "Agent" },
+  { key: "timeline", icon: <HistoryOutlined />, label: "时间线" },
   { key: "tasks", icon: <CheckSquareOutlined />, label: "任务" },
   { key: "settings", icon: <SettingOutlined />, label: "设置" },
 ];
 
-const themeConfig: ThemeConfig = {
-  token: {
-    colorPrimary: "#1a1a2e",
-    colorBgContainer: "#ffffff",
-    colorBgLayout: "#f8f9fa",
-    colorBorderSecondary: "#edf0f5",
-    borderRadius: 10,
-    fontFamily: '"Noto Sans CJK SC", "Source Han Sans SC", -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-  },
-};
-
 function App() {
-  const [collapsed, setCollapsed] = useState(false);
   const [stats, setStats] = useState<Stats>({
     total_memories: 0,
     total_sessions: 0,
     recent_sessions: [],
   });
 
-  // 从 URL hash 初始化页面，刷新后保持当前页面
   const hashPage = location.hash.replace("#", "") || "overview";
   const [page, setPage] = useState(hashPage);
-
-  const { token } = theme.useToken();
 
   useEffect(() => {
     fetch("/api/stats")
@@ -67,7 +61,6 @@ function App() {
     location.hash = key;
   };
 
-  // 监听浏览器前进/后退
   useEffect(() => {
     const onHashChange = () => {
       const p = location.hash.replace("#", "") || "overview";
@@ -80,45 +73,111 @@ function App() {
   const pages: Record<string, React.ReactNode> = {
     overview: <Overview stats={stats} />,
     memories: <Memories />,
+    agents: <Agents />,
     timeline: <Timeline />,
     tasks: <Tasks />,
-    settings: <Settings />,
+    settings: <SettingsPage />,
   };
 
   return (
     <ConfigProvider theme={themeConfig}>
-    <Layout style={{ minHeight: "100vh" }}>
-      <Sider
-        collapsible
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        style={{ background: token.colorBgContainer }}
-      >
-        <div
+      <Layout style={{ minHeight: "100vh", background: COLORS.bg.page }}>
+        {/* 顶部导航 */}
+        <Header
           style={{
-            height: 64,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+            justifyContent: "space-between",
+            padding: "0 32px",
+            position: "sticky",
+            top: 0,
+            zIndex: 100,
+            background: COLORS.bg.page,
           }}
         >
-          <Typography.Title level={4} style={{ margin: 0, color: token.colorPrimary }}>
-            {collapsed ? "AM" : "Agent Memory"}
-          </Typography.Title>
-        </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[page]}
-          items={menuItems}
-          onClick={({ key }) => navigate(key)}
-          style={{ borderRight: 0 }}
-        />
-      </Sider>
-      <Content style={{ padding: 24, overflow: "auto", background: token.colorBgLayout }}>
-        {pages[page] || <Overview stats={stats} />}
-      </Content>
-    </Layout>
+          {/* Logo + 品牌 */}
+          <Space size={12}>
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 6,
+                background: `linear-gradient(135deg, ${COLORS.accent.blue}, ${COLORS.accent.purple})`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#fff",
+              }}
+            >
+              A
+            </div>
+            <Typography.Text
+              strong
+              style={{
+                fontSize: 15,
+                color: COLORS.text.primary,
+                letterSpacing: "-0.3px",
+              }}
+            >
+              Agent Memory
+            </Typography.Text>
+          </Space>
+
+          {/* 导航菜单 */}
+          <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {navItems.map((item) => {
+              const active = page === item.key;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => navigate(item.key)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "6px 12px",
+                    border: "none",
+                    borderRadius: 6,
+                    background: active ? COLORS.bg.elevated : "transparent",
+                    color: active ? COLORS.text.primary : COLORS.text.secondary,
+                    fontSize: 13.5,
+                    fontWeight: active ? 500 : 400,
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
+                    fontFamily: "inherit",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) e.currentTarget.style.background = COLORS.bg.elevated;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  {item.icon}
+                  {item.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* 右侧占位 */}
+          <div style={{ width: 120 }} />
+        </Header>
+
+        {/* 页面内容 */}
+        <Content
+          style={{
+            padding: "28px 32px",
+            maxWidth: 1200,
+            margin: "0 auto",
+            width: "100%",
+          }}
+        >
+          {pages[page] || <Overview stats={stats} />}
+        </Content>
+      </Layout>
     </ConfigProvider>
   );
 }

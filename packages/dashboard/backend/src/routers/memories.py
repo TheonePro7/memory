@@ -26,7 +26,7 @@ def update_memory(memory_id: str, update: MemoryUpdate):
 
 
 @router.get("/memories")
-def list_memories(q: str = "", project_id: str | None = None, process: bool = False, limit: int = 50):
+def list_memories(q: str = "", project_id: str | None = None, agent: str | None = None, process: bool = False, limit: int = 50):
     if q:
         results = mem0_backend.search(q, project_id=project_id, limit=limit)
         if process and results:
@@ -36,6 +36,8 @@ def list_memories(q: str = "", project_id: str | None = None, process: bool = Fa
                 results = reranked
     else:
         results = mem0_backend.list_all(project_id=project_id, limit=limit)
+    if agent and results:
+        results = [r for r in results if r.get("metadata", {}).get("agent") == agent]
     return {"results": results, "total": len(results)}
 
 

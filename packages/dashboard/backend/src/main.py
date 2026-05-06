@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 
-from routers import memories, sessions, stats, tasks, quota
+from routers import memories, sessions, stats, tasks, quota, agents
 
 app = FastAPI(title="Agent Memory Dashboard")
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:8712", "http://127.0.0.1:8712", "http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["*"], allow_headers=["*"])
@@ -25,6 +25,7 @@ app.include_router(sessions.router, prefix="/api")
 app.include_router(stats.router, prefix="/api")
 app.include_router(tasks.router, prefix="/api")
 app.include_router(quota.router, prefix="/api")
+app.include_router(agents.router, prefix="/api")
 
 static_dir = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 if static_dir.exists():
