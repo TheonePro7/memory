@@ -65,8 +65,8 @@ export default function Memories() {
       content: `确定要删除这条记忆吗？\n"${(memory.memory || "").slice(0, 50)}..."`,
       onOk: async () => {
         if (!(await checkQuota())) return;
-        await fetch(`/api/memories/${memory.id}`, { method: "DELETE" });
-        await fetch("/api/quota/increment", { method: "POST" });
+        const res = await fetch(`/api/memories/${memory.id}`, { method: "DELETE" });
+        if (res.status === 403 || res.status === 404) return;
         setQuota(await fetch("/api/quota").then(r => r.json()));
         search(query, projectFilter);
       },
@@ -198,12 +198,12 @@ export default function Memories() {
         onOk={async () => {
           if (!editModal.memory?.id) return;
           if (!(await checkQuota())) return;
-          await fetch(`/api/memories/${editModal.memory.id}`, {
+          const res = await fetch(`/api/memories/${editModal.memory.id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content: editContent }),
           });
-          await fetch("/api/quota/increment", { method: "POST" });
+          if (res.status === 403 || res.status === 404) return;
           setQuota(await fetch("/api/quota").then(r => r.json()));
           setEditModal({ visible: false, memory: null });
           search(query, projectFilter);

@@ -185,23 +185,42 @@ def delete(memory_id: str) -> bool:
 
 
 def update(memory_id: str, new_content: str) -> bool:
-    """更新记忆内容 — 删除原记录后重新插入（ChromaDB 不支持原地更新）。"""
+    """更新记忆内容 — 删除原记录后重新插入（ChromaDB 不支持原地更新）。
+
+    若重插入失败，尝试恢复原数据以保证原子性。
+    """
     try:
         if not new_content or not new_content.strip():
             return False
-        existing = _get_collection().get(ids=[memory_id], include=["metadatas"])
+        existing = _get_collection().get(ids=[memory_id], include=["metadatas", "documents"])
         if not existing or not existing.get("ids"):
             return False
+        old_doc = existing["documents"][0] if existing.get("documents") else ""
         old_meta = existing["metadatas"][0] if existing.get("metadatas") else {}
 
         _get_collection().delete(ids=[memory_id])
-        vector = _embed(new_content)
-        _get_collection().add(
-            documents=[new_content],
-            embeddings=[vector],
-            metadatas=[old_meta],
-            ids=[memory_id],
-        )
+        try:
+            vector = _embed(new_content)
+            _get_collection().add(
+                documents=[new_content],
+                embeddings=[vector],
+                metadatas=[old_meta],
+                ids=[memory_id],
+            )
+        except Exception:
+            # 重插入失败，尝试恢复原数据
+            logger.warning("update re-insert failed, attempting rollback for %s", memory_id)
+            try:
+                old_vector = _embed(old_doc)
+                _get_collection().add(
+                    documents=[old_doc],
+                    embeddings=[old_vector],
+                    metadatas=[old_meta],
+                    ids=[memory_id],
+                )
+            except Exception as rb_e:
+                logger.error("rollback also failed for %s: %s", memory_id, rb_e)
+            raise
         return True
     except Exception as e:
         logger.error("update failed: %s", e)
