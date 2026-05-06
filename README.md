@@ -2,7 +2,7 @@
 
 > 装了这个东西，就变真智能了。
 
-一个让 AI Agent 拥有记忆能力的元认知层产品。不是另一个记忆 API，而是 Agent 的记忆操作系统。
+一个让 AI Agent 拥有记忆能力的记忆管理层产品。不是另一个记忆 API，而是 Agent 的记忆操作系统。
 
 ## 快速开始
 
@@ -79,6 +79,62 @@ memory/
 
 核心记忆功能完全本地运行，数据存储在 `~/.agent-memory/chroma/`。会话摘要（summarize）可选调用 Anthropic/OpenAI API，不提供 API Key 时自动回退到本地截断模式。
 
+## V1.0 记忆管理
+
+**Agent 记忆管理平面** — 不记忆，管理记忆。兼容多种记忆后端，统一操作界面。
+
+### Dashboard 编辑/删除
+
+在 Dashboard 记忆列表页可直接编辑和删除记忆：
+- **编辑** — 修改记忆内容，保留原元数据（时间戳、项目 ID、标签等）
+- **删除** — 一键删除，无需确认 API 调用（有前端确认弹窗）
+
+### 编辑限制
+
+每月 100 次免费编辑，可通过裂变推荐解锁更多：
+
+| 方式 | 获取次数 |
+|------|---------|
+| 每月基础配额 | 100 次 |
+| 每成功推荐一位 | +50 次 |
+
+### 裂变推荐
+
+```bash
+# 查看邀请码
+python -m agent_memory_mcp.cli refer
+# 你的邀请码: 4FB7053B
+
+# 被推荐者安装后输入邀请码即可（通过 API）
+POST /api/quota/refer  {"referral_code": "4FB7053B"}
+```
+
+### 记忆同步层
+
+核心 `remember()` 支持自动同步到第三方存储：
+
+```python
+# 注册第三方适配器
+from agent_memory_mcp.core import register_adapter
+register_adapter(MyAdapter())
+
+# 写入记忆时自动同步到所有注册的第三方
+remember("内容", sync_third_party=True)
+```
+
+内置适配器：
+- **Mem0Adapter** — 读取 Mem0（Qdrant）存储的记忆
+- **BasicMemoryAdapter** — 读取 Basic Memory 的 Markdown 文件
+- **ChromaDB**（默认）— 自有向量存储
+
+### 导出
+
+```http
+GET /api/memories/export
+```
+
+返回全部记忆的 JSON 导出，包含时间戳和版本号。
+
 ## 存储配置
 
 | 环境变量 | 作用 | 默认值 |
@@ -120,4 +176,7 @@ npx @agent-memory/init
 - [x] CLI — remember / recall / summarize，支持 project_id
 - [x] MCP 集成 — Claude Code 自动记忆
 - [x] 跨项目共享 — 中央库 + project_id 隔离
+- [x] **V1.0 记忆管理** — 编辑/删除记忆、100 次/月免费编辑、裂变推荐
+- [x] **记忆管理层** — 兼容 Mem0 / Basic Memory / 自有 ChromaDB 统一管理界面
+- [x] **记忆同步框架** — 适配器注册中心，第三方存储只读兼容
 - [ ] TypeScript CLI（`npx @agent-memory/init`）

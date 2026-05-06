@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ivanston-memory-mcp"
-version = "0.1.0"
+version = "1.0.0"
 description = "Agent 记忆系统 MCP 服务 — 为 Claude Code / Cursor 等 AI 客户端提供持久记忆能力"
 readme = "README.md"
 requires-python = ">=3.10"
