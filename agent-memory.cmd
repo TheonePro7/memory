@@ -1,2 +1,2 @@
 @echo off
-python "%~dp0packages\python-cli\src\main.py" %*
+python "%~dp0packages\mcp-server\src\cli.py" %*

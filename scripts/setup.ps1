@@ -41,8 +41,8 @@ $mcpConfig | ConvertTo-Json -Depth 3 | Set-Content "$settingsDir\settings.local.
 # 4. Hooks 配置
 Write-Host "[4/4] 配置 Hooks..." -ForegroundColor Yellow
 $hooksConfig = @{
-    onSessionStart = @("python packages\python-cli\src\main.py recall")
-    onSessionEnd = @("python packages\python-cli\src\main.py summarize")
+    onSessionStart = @("python packages\mcp-server\src\cli.py recall")
+    onSessionEnd = @("python packages\mcp-server\src\cli.py summarize")
 }
 $hooksConfig | ConvertTo-Json -Depth 2 | Set-Content "$settingsDir\hooks.json" -Encoding UTF8
 

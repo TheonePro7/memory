@@ -7,8 +7,8 @@ router = APIRouter(tags=["stats"])
 
 
 @router.get("/stats")
-def get_stats():
-    m = mem0_backend.stats()
+def get_stats(project_id: str | None = None):
+    m = mem0_backend.stats(project_id=project_id)
     sessions = md_backend.get_recent(days=90)
     return {
         "total_memories": m["total"],

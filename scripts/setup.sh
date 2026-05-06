@@ -30,8 +30,8 @@ EOF
 echo "[4/4] 配置 Hooks..."
 cat > "$ROOT/.claude/hooks.json" <<- EOF
 {
-  "onSessionStart": ["python packages/python-cli/src/main.py recall"],
-  "onSessionEnd": ["python packages/python-cli/src/main.py summarize"]
+  "onSessionStart": ["python packages/mcp-server/src/cli.py recall"],
+  "onSessionEnd": ["python packages/mcp-server/src/cli.py summarize"]
 }
 EOF
 

@@ -21,11 +21,11 @@ _collection_lock = threading.Lock()
 
 
 def _get_memory_dir() -> Path:
-    """数据目录：优先 AGENT_MEMORY_DIR 环境变量，否则用 CWD。"""
+    """数据目录：优先 AGENT_MEMORY_DIR 环境变量，否则 ~/.agent-memory/chroma/（跨项目共享）。"""
     env = os.environ.get("AGENT_MEMORY_DIR")
     if env:
         return Path(env) / ".memory" / "chroma"
-    return Path.cwd() / ".memory" / "chroma"
+    return Path.home() / ".agent-memory" / "chroma"
 
 
 def _get_embedder() -> TextEmbedding:
@@ -63,17 +63,28 @@ def add(
     user_id: str = "default",
     project_id: str | None = None,
     tags: list[str] | None = None,
+    entities: list[str] | None = None,
+    actions: list[str] | None = None,
+    llm_summary: str | None = None,
 ) -> dict:
     try:
         if not content or not content.strip():
             return {"id": "", "backend": "mem0", "status": "error", "error": "empty content"}
         memory_id = str(uuid.uuid4())
         vector = _embed(content)
-        metadata = {"user_id": user_id}
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        metadata = {"user_id": user_id, "created_at": now}
         if project_id:
             metadata["project_id"] = project_id
         if tags:
             metadata["tags"] = ",".join(tags)
+        if entities:
+            metadata["entities"] = ",".join(entities)
+        if actions:
+            metadata["actions"] = ",".join(actions)
+        if llm_summary:
+            metadata["llm_summary"] = llm_summary
 
         _get_collection().add(
             documents=[content],
@@ -97,9 +108,9 @@ def search(
         if not query or not query.strip():
             return []
         vector = _embed(query)
-        where = {"user_id": user_id}
+        where: dict = {"user_id": user_id}
         if project_id:
-            where["project_id"] = project_id
+            where = {"$and": [{"user_id": user_id}, {"project_id": project_id}]}
 
         results = _get_collection().query(
             query_embeddings=[vector],
@@ -126,8 +137,46 @@ def search(
         return []
 
 
-def delete(memory_id: str, user_id: str = "default") -> bool:
+def list_all(
+    user_id: str = "default",
+    project_id: str | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    """列出所有记忆，按添加顺序倒序排列。"""
     try:
+        col = _get_collection()
+        where: dict = {"user_id": user_id}
+        if project_id:
+            where = {"$and": [{"user_id": user_id}, {"project_id": project_id}]}
+        results = col.get(
+            where=where,
+            include=["documents", "metadatas"],
+            limit=limit,
+        )
+        ids = results.get("ids", [])
+        docs = results.get("documents", [])
+        metas = results.get("metadatas", [])
+        out = []
+        for i in range(len(ids)):
+            out.append({
+                "id": ids[i],
+                "memory": docs[i] if i < len(docs) else "",
+                "metadata": metas[i] if i < len(metas) else {},
+            })
+        # 倒序（最新的在前）
+        out.reverse()
+        return out
+    except Exception as e:
+        logger.error("list_all failed: %s", e)
+        return []
+
+
+def delete(memory_id: str) -> bool:
+    """通过 ID 删除一条记忆。先校验 ID 存在再删除。"""
+    try:
+        existing = _get_collection().get(ids=[memory_id], include=[])
+        if not existing or not existing.get("ids"):
+            return False
         _get_collection().delete(ids=[memory_id])
         return True
     except Exception as e:
@@ -135,32 +184,40 @@ def delete(memory_id: str, user_id: str = "default") -> bool:
         return False
 
 
-def stats(user_id: str = "default") -> dict:
+def update(memory_id: str, new_content: str) -> bool:
+    """更新记忆内容 — 删除原记录后重新插入（ChromaDB 不支持原地更新）。"""
+    try:
+        if not new_content or not new_content.strip():
+            return False
+        existing = _get_collection().get(ids=[memory_id], include=["metadatas"])
+        if not existing or not existing.get("ids"):
+            return False
+        old_meta = existing["metadatas"][0] if existing.get("metadatas") else {}
+
+        _get_collection().delete(ids=[memory_id])
+        vector = _embed(new_content)
+        _get_collection().add(
+            documents=[new_content],
+            embeddings=[vector],
+            metadatas=[old_meta],
+            ids=[memory_id],
+        )
+        return True
+    except Exception as e:
+        logger.error("update failed: %s", e)
+        return False
+
+
+def stats(user_id: str = "default", project_id: str | None = None) -> dict:
     try:
         col = _get_collection()
-        count = col.count()
+        where: dict = {"user_id": user_id}
+        if project_id:
+            where = {"$and": [{"user_id": user_id}, {"project_id": project_id}]}
+        # 不设 limit 以获取准确总数（原 limit=10000 导致超限时计数偏低）
+        results = col.get(where=where, include=[])
+        count = len(results.get("ids", []))
         return {"total": count, "user_id": user_id}
     except Exception as e:
         logger.error("stats failed: %s", e)
         return {"total": 0, "user_id": user_id, "error": str(e)}
-
-
-def list_all(user_id: str = "default", limit: int = 50) -> list[dict]:
-    try:
-        col = _get_collection()
-        where = {"user_id": user_id}
-        results = col.get(where=where, limit=limit, include=["documents", "metadatas"])
-        out = []
-        ids = results.get("ids", [])
-        docs = results.get("documents", [])
-        metas = results.get("metadatas", [])
-        for i in range(len(ids)):
-            out.append({
-                "id": ids[i],
-                "memory": docs[i] if i < len(docs) else "",
-                "metadata": metas[i] if i < len(metas) else {},
-            })
-        return out
-    except Exception as e:
-        logger.error("list_all failed: %s", e)
-        return []
