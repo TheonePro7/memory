@@ -10,11 +10,13 @@
 git clone https://github.com/TheonePro7/memory.git
 cd memory
 
-# Windows
-.\scripts\setup.ps1
+# 使用 devflow 项目编排器初始化
+pip install -e /path/to/devflow   # 安装 devflow（或全局安装）
+devflow bootstrap                 # 一键初始化项目环境
 
-# Linux / macOS
-chmod +x scripts/setup.sh && ./scripts/setup.sh
+# 或手动安装：
+.\scripts\setup.ps1               # Windows
+chmod +x scripts/setup.sh && ./scripts/setup.sh  # Linux / macOS
 ```
 
 ### 启动 Dashboard
@@ -78,6 +80,26 @@ memory/
 │   └── project-management.md # 项目管理
 ├── CHANGELOG.md
 └── ~/.agent-memory/chroma/   # 中央向量数据库（跨项目共享）
+```
+
+## 项目编排
+
+本项目使用 [devflow](https://github.com/TheonePro7/devflow) 进行全生命周期编排：
+
+| Phase | 状态 | 说明 |
+|-------|------|------|
+| Phase 1 (Ideate) | ✅ 完成 | 4 阶段需求梳理 → PRD |
+| Phase 2 (Design) | 🔄 进行中 | 架构设计 + brainstroming |
+| Phase 3 (Setup) | ✅ 完成 | beads + gitnexus + autoresearch 就绪 |
+| Phase 4 (Develop) | ⏳ 待开始 | 开发循环 |
+| Phase 5 (Finish) | ⏳ 待开始 | 收尾提交 |
+
+```bash
+devflow state        # 查看当前阶段
+devflow guide        # 查看工作流地图
+devflow doctor       # 环境诊断
+devflow task list    # 查看任务
+devflow log          # 查看状态变更历史
 ```
 
 ### 跨项目记忆隔离
