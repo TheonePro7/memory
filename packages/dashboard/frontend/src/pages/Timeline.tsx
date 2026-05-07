@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Typography, Spin, Space, Empty, Button } from "antd";
 import { ClockCircleOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import { COLORS } from "../theme";
+import { apiFetch } from "../api";
+import { getCache, setCache } from "../cache";
 
 interface Session {
   date: string;
@@ -23,9 +25,17 @@ export default function Timeline() {
   };
 
   useEffect(() => {
-    fetch("/api/sessions?days=30")
-      .then((r) => r.json())
-      .then((data) => setSessions(data.sessions || []))
+    const cached = getCache<{ sessions: Session[] }>("/api/sessions?days=30");
+    if (cached) {
+      setSessions(cached.sessions || []);
+      setLoading(false);
+      return;
+    }
+    apiFetch<{ sessions: Session[] }>("/api/sessions?days=30")
+      .then((data) => {
+        setSessions(data.sessions || []);
+        setCache("/api/sessions?days=30", data);
+      })
       .catch(() => setSessions([]))
       .finally(() => setLoading(false));
   }, []);

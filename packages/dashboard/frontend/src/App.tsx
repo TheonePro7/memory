@@ -1,4 +1,6 @@
 import React, { useEffect, useState, lazy, Suspense } from "react";
+import { apiFetch } from "./api";
+import { getCache, setCache } from "./cache";
 import { ConfigProvider, Layout, Typography, Space, Button, Spin } from "antd";
 import {
   BarChartOutlined,
@@ -23,7 +25,7 @@ class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error: Error | null }
 > {
-  state = { hasError: false, error: null };
+  state: { hasError: boolean; error: Error | null } = { hasError: false, error: null };
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
@@ -86,9 +88,17 @@ function App() {
 
   useEffect(() => {
     setStatsLoading(true);
-    fetch("/api/stats")
-      .then((r) => r.json())
-      .then(setStats)
+    const cached = getCache<Stats>("/api/stats");
+    if (cached) {
+      setStats(cached);
+      setStatsLoading(false);
+      return;
+    }
+    apiFetch<Stats>("/api/stats")
+      .then((data) => {
+        setStats(data);
+        setCache("/api/stats", data);
+      })
       .catch(() => {})
       .finally(() => setStatsLoading(false));
   }, []);
@@ -130,6 +140,8 @@ function App() {
             top: 0,
             zIndex: 100,
             background: COLORS.bg.page,
+            overflowX: "auto",
+            gap: 12,
           }}
         >
           {/* Logo + 品牌 */}
@@ -163,7 +175,7 @@ function App() {
           </Space>
 
           {/* 导航菜单 */}
-          <nav style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <nav style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
             {navItems.map((item) => {
               const active = page === item.key;
               return (
@@ -206,7 +218,7 @@ function App() {
         {/* 页面内容 */}
         <Content
           style={{
-            padding: "28px 32px",
+            padding: "28px 16px",
             maxWidth: 1200,
             margin: "0 auto",
             width: "100%",

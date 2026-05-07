@@ -1,4 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
+import { apiFetch } from "../api";
+import { getCache, setCache } from "../cache";
 import { Input, Table, Tag, Typography, Space, Select, Button, Modal, Divider, Tooltip, message } from "antd";
 import { SearchOutlined, EditOutlined, DeleteOutlined, FolderOutlined, PlusOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
@@ -31,12 +33,21 @@ export default function Memories() {
     let url = `/api/memories?q=${encodeURIComponent(q)}&limit=50`;
     if (pid) url += `&project_id=${encodeURIComponent(pid)}`;
     if (agent) url += `&agent=${encodeURIComponent(agent)}`;
-    fetch(url)
-      .then((r) => r.json())
+
+    const cached = getCache<{ results: Memory[]; total: number }>(url);
+    if (cached) {
+      setMemories(cached.results);
+      setTotalResults(cached.total);
+      setLoading(false);
+      return;
+    }
+
+    apiFetch<{ results: Memory[]; total: number }>(url)
       .then((data) => {
         const results = data.results || [];
         setMemories(results);
         setTotalResults(data.total || results.length);
+        setCache(url, data);
         const pids = new Set<string>();
         results.forEach((m: Memory) => {
           const pid = m.metadata?.project_id;
@@ -128,7 +139,7 @@ export default function Memories() {
     return true;
   };
 
-  const columns: ColumnsType<Memory> = [
+  const columns: ColumnsType<Memory> = useMemo(() => [
     {
       title: "内容",
       dataIndex: "memory",
@@ -232,7 +243,7 @@ export default function Memories() {
         </Space>
       ),
     },
-  ];
+  ], []);
 
   return (
     <div>
@@ -248,13 +259,14 @@ export default function Memories() {
       <div
         style={{
           display: "flex",
+          flexWrap: "wrap",
           alignItems: "center",
           justifyContent: "space-between",
           marginBottom: 16,
           gap: 12,
         }}
       >
-        <Space size={12}>
+        <Space size={12} wrap>
           <Input.Search
             placeholder="搜索记忆内容..."
             value={query}
@@ -266,7 +278,7 @@ export default function Memories() {
               }, 300);
             }}
             onSearch={(v) => search(v, projectFilter, agentFilter)}
-            style={{ width: 300 }}
+            style={{ width: "min(300px, 100%)", maxWidth: 300 }}
             prefix={<SearchOutlined style={{ color: COLORS.text.tertiary }} />}
           />
           <span style={{ fontSize: 13, color: COLORS.text.tertiary, whiteSpace: "nowrap" }}>
@@ -354,9 +366,11 @@ export default function Memories() {
         >
           编辑 {quota.used}/{quota.total} {quota.bonus > 0 ? `+${quota.bonus}` : ""}
         </Tag>
+        </Space>
       </div>
 
       {/* 记忆表格 */}
+      <div style={{ overflowX: "auto" }}>
       <Table
         dataSource={memories}
         columns={columns}
@@ -373,6 +387,7 @@ export default function Memories() {
         }}
         size="middle"
       />
+      </div>
 
       {/* 编辑弹窗 */}
       <Modal

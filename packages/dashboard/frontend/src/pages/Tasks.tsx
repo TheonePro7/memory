@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Typography, Table, Tag, Select, Card, Row, Col, Modal, Space, Tooltip, Button } from "antd";
 import {
   CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined,
@@ -6,6 +6,8 @@ import {
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { COLORS } from "../theme";
+import { apiFetch } from "../api";
+import { getCache, setCache, invalidateCache } from "../cache";
 
 interface Task {
   id: string;
@@ -34,16 +36,28 @@ export default function Tasks() {
   const [taskDetail, setTaskDetail] = useState<Task | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
-  const fetchTasks = (status?: string) => {
+  const fetchTasks = (status?: string, skipCache = false) => {
     setLoading(true);
     let url = "/api/tasks";
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     const qs = params.toString();
     if (qs) url += "?" + qs;
-    fetch(url)
-      .then((r) => r.json())
-      .then((data) => setTasks(data.tasks || []))
+
+    if (!skipCache) {
+      const cached = getCache<{ tasks: Task[] }>(url);
+      if (cached) {
+        setTasks(cached.tasks || []);
+        setLoading(false);
+        return;
+      }
+    }
+
+    apiFetch<{ tasks: Task[] }>(url)
+      .then((data) => {
+        setTasks(data.tasks || []);
+        setCache(url, data);
+      })
       .catch(() => setTasks([]))
       .finally(() => setLoading(false));
   };
@@ -52,9 +66,18 @@ export default function Tasks() {
 
   const fetchTaskDetail = (id: string) => {
     setDetailLoading(true);
-    fetch(`/api/tasks/${id}`)
-      .then((r) => r.json())
-      .then((data) => setTaskDetail(data.error ? null : data))
+    const url = `/api/tasks/${id}`;
+    const cached = getCache<Task>(url);
+    if (cached) {
+      setTaskDetail(cached);
+      setDetailLoading(false);
+      return;
+    }
+    apiFetch<Task>(url)
+      .then((data) => {
+        setTaskDetail(data);
+        setCache(url, data);
+      })
       .catch(() => setTaskDetail(null))
       .finally(() => setDetailLoading(false));
   };
@@ -66,7 +89,7 @@ export default function Tasks() {
     done: tasks.filter((t) => t.status === "done").length,
   };
 
-  const columns: ColumnsType<Task> = [
+  const columns: ColumnsType<Task> = useMemo(() => [
     {
       title: "标题",
       dataIndex: "title",
@@ -154,7 +177,7 @@ export default function Tasks() {
         </Tooltip>
       ),
     },
-  ];
+  ], []);
 
   return (
     <div>
@@ -171,7 +194,7 @@ export default function Tasks() {
           const meta = statusMeta[status];
           if (!meta) return null;
           return (
-            <Col span={6} key={status}>
+            <Col xs={12} sm={6} key={status}>
               <Card
                 styles={{ body: { padding: "16px 20px" } }}
                 style={{
@@ -218,7 +241,7 @@ export default function Tasks() {
           placeholder="筛选状态"
           style={{ width: 160 }}
           value={statusFilter}
-          onChange={(v) => { setStatusFilter(v ?? undefined); fetchTasks(v ?? undefined); }}
+          onChange={(v) => { setStatusFilter(v ?? undefined); fetchTasks(v ?? undefined, true); }}
           options={Object.entries(statusMeta).map(([value, meta]) => ({
             value,
             label: meta.label,
@@ -227,14 +250,16 @@ export default function Tasks() {
       </div>
 
       {/* 任务表格 */}
-      <Table
-        dataSource={tasks}
-        columns={columns}
-        loading={loading}
-        pagination={{ pageSize: 20, size: "small" }}
-        rowKey="id"
-        size="middle"
-      />
+      <div style={{ overflowX: "auto" }}>
+        <Table
+          dataSource={tasks}
+          columns={columns}
+          loading={loading}
+          pagination={{ pageSize: 20, size: "small" }}
+          rowKey="id"
+          size="middle"
+        />
+      </div>
 
       {/* 详情弹窗 */}
       <Modal
