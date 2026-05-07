@@ -21,6 +21,7 @@ def remember(
     content: str,
     tags: list[str] = [],
     project_id: str | None = None,
+    agent: str = "default",
     process: bool = False,
 ) -> dict:
     """记住一条信息。
@@ -28,13 +29,14 @@ def remember(
     Args:
         content: 要记住的内容
         tags: 分类标签，如 ["coding-style", "preference"]
-        project_id: 项目隔离
+        project_id: 项目标识符，不传则自动从 git root 推断
+        agent: Agent 名称，如 "claude-code", "cursor"，默认 "default"
         process: 是否用 LLM 提取实体和摘要
     """
     try:
-        result = core_remember(content, tags=tags, project_id=project_id, process=process)
+        result = core_remember(content, tags=tags, project_id=project_id, agent=agent, process=process)
         append_session_log(content)
-        audit.log("remember", content_summary=content[:50], backend="mem0", tags=tags, process=process)
+        audit.log("remember", content_summary=content[:50], backend="mem0", tags=tags, agent=agent, process=process)
         return {"id": result.get("id"), "backend": "mem0", "status": "stored"}
     except Exception as e:
         logger.error("remember failed: %s", e)
@@ -66,14 +68,15 @@ def recall(
 
 
 @mcp.tool()
-def summarize(context: str) -> dict:
+def summarize(context: str, agent: str = "default") -> dict:
     """生成会话摘要并持久化。自动调用 LLM，写入 Markdown 并提取事实。
 
     Args:
         context: 当前会话文本
+        agent: Agent 名称，如 "claude-code", "cursor"，默认 "default"
     """
     try:
-        result = core_summarize(context)
+        result = core_summarize(context, agent=agent)
         audit.log("summarize", summary_len=len(result["summary"]), facts_count=len(result.get("facts", [])))
         return result
     except Exception as e:

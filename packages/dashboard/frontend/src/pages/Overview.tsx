@@ -24,7 +24,7 @@ export default function Overview({ stats, loading }: Props) {
         </Typography.Title>
         <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
           {[1, 2, 3].map((i) => (
-            <Col span={8} key={i}>
+            <Col xs={24} sm={12} lg={8} key={i}>
               <Card loading style={{ background: COLORS.bg.card }} />
             </Col>
           ))}
@@ -55,7 +55,7 @@ export default function Overview({ stats, loading }: Props) {
         {statCards.map((c) => {
           const val = c.value(stats);
           return (
-            <Col span={8} key={c.title}>
+            <Col xs={24} sm={12} lg={8} key={c.title}>
               <Card
                 styles={{ body: { padding: "20px 24px" } }}
                 style={{

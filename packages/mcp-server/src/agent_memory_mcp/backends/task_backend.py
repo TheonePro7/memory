@@ -77,6 +77,14 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _row_to_task(r: sqlite3.Row) -> dict:
+    return {"id": r["id"], "source": r["source"], "source_id": r["source_id"],
+            "title": r["title"], "status": r["status"], "priority": r["priority"],
+            "project_id": r["project_id"],
+            "tags": r["tags"].split(",") if r["tags"] else [],
+            "created_at": r["created_at"], "updated_at": r["updated_at"]}
+
+
 # ── CRUD ──────────────────────────────────────────
 
 def create_task(
@@ -145,7 +153,7 @@ def list_tasks(
             f"SELECT * FROM tasks {where} ORDER BY updated_at DESC LIMIT ?",
             params + [limit],
         ).fetchall()
-    return [dict(r) for r in rows]
+    return [_row_to_task(r) for r in rows]
 
 
 def update_status(task_id: str, status: str) -> dict | None:
@@ -205,7 +213,7 @@ def get_active_tasks(project_id: str = "default") -> list[dict]:
             "SELECT * FROM tasks WHERE project_id=? AND status IN ('in_progress','blocked') ORDER BY updated_at DESC",
             (project_id,),
         ).fetchall()
-    return [dict(r) for r in rows]
+    return [_row_to_task(r) for r in rows]
 
 
 def delete_task(task_id: str) -> bool:

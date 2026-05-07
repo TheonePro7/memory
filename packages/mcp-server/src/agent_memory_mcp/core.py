@@ -56,17 +56,20 @@ def _format_mem0_result(r: dict) -> dict:
         "source": "mem0",
         "id": r.get("id", ""),
     }
-    meta = r.get("metadata") or {}
-    if meta.get("entities"):
-        item["entities"] = meta["entities"].split(",") if isinstance(meta["entities"], str) else meta["entities"]
-    if meta.get("actions"):
-        item["actions"] = meta["actions"].split(",") if isinstance(meta["actions"], str) else meta["actions"]
-    if meta.get("llm_summary"):
-        item["llm_summary"] = meta["llm_summary"]
-    if meta.get("tags"):
-        item["tags"] = meta["tags"].split(",") if isinstance(meta["tags"], str) else meta["tags"]
+    meta = r.get("metadata")
+    if not meta or not isinstance(meta, dict):
+        meta = {}
+    # 透传所有关键 metadata 字段
+    for field in ("project_id", "agent", "entities", "actions", "llm_summary", "tags"):
+        val = meta.get(field) or r.get(field)
+        if val:
+            if field in ("entities", "actions", "tags") and isinstance(val, str):
+                item[field] = val.split(",")
+            else:
+                item[field] = val
     if "rerank_reason" in r:
         item["rerank_reason"] = r["rerank_reason"]
+
     return item
 
 
@@ -74,14 +77,22 @@ def remember(
     content: str,
     tags: list[str] | None = None,
     project_id: str | None = None,
+    agent: str = "default",
     process: bool = False,
     sync_third_party: bool = True,
 ) -> dict:
     """记忆存储：可选 LLM 加工 → 向量存储 → 可选同步到第三方。
 
+    强制行为：
+    - project_id 不传时自动从 git root 推断
+    - agent 不传时默认为 "default"
+
     Args:
         sync_third_party: 是否同步写入已注册的第三方适配器
     """
+    if not project_id:
+        project_id = detect_project_id()
+
     entities = actions = llm_summary = None
     if process:
         result = extract(content)
@@ -93,7 +104,7 @@ def remember(
                 tags = list(set((tags or []) + result["tags"]))
 
     # 总是写自有存储
-    result = mem0_backend.add(content, project_id=project_id, tags=tags,
+    result = mem0_backend.add(content, project_id=project_id, tags=tags, agent=agent,
                               entities=entities, actions=actions, llm_summary=llm_summary)
 
     # 可选同步 — 写第三方适配器（V1.0 适配器只读，写第三方后续版本实现）
@@ -119,15 +130,17 @@ def recall(
     return [_format_mem0_result(r) for r in results]
 
 
-def summarize(context: str, project_id: str | None = None) -> dict:
+def summarize(context: str, project_id: str | None = None, agent: str = "default") -> dict:
     """会话总结：LLM 摘要 → 持久化 → 提取事实。"""
     result = generate_summary(context)
     path = md_backend.append_summary(result["summary"])
+    if not project_id:
+        project_id = detect_project_id()
     # 总是把摘要存为向量记忆，不依赖 API key（即使 fallback 截断也能存）
-    mem0_backend.add(result["summary"], tags=["auto-summary"], project_id=project_id)
+    mem0_backend.add(result["summary"], tags=["auto-summary"], project_id=project_id, agent=agent)
     for fact in result.get("facts", []):
-        mem0_backend.add(fact, tags=["auto-extracted"], project_id=project_id)
-    sync_beads(project_id or "default")
+        mem0_backend.add(fact, tags=["auto-extracted"], project_id=project_id, agent=agent)
+    sync_beads(project_id)
     return {
         "summary": result["summary"],
         "file": path,

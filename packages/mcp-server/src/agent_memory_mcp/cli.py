@@ -47,11 +47,36 @@ def cmd_summarize() -> None:
         if not ctx_file.exists():
             print("No session context found", file=sys.stderr)
             return
-        text = ctx_file.read_text(encoding="utf-8")
+        raw = ctx_file.read_text(encoding="utf-8")
+
+        # 过滤噪音行：跳过常见的测试/占位内容
+        noise_keywords = {"test content", "content", "测试内容", "带标签的内容", "摘要A", "摘要B",
+                         "测试摘要", "test_md_backend", "test_"}
+        filtered_lines = []
+        for line in raw.split("\n"):
+            stripped = line.strip()
+            if not stripped or stripped in noise_keywords:
+                continue
+            # 跳过以测试前缀开头的行
+            if any(stripped.startswith(kw) for kw in ("test ", "test_", "测试")):
+                if len(stripped) < 30:  # 短测试行跳过，长行可能是用户真实内容
+                    continue
+            filtered_lines.append(stripped)
+
+        text = "\n".join(filtered_lines) if filtered_lines else raw
+        if len(filtered_lines) < len(raw.split("\n")) // 2:
+            # 超过一半内容被过滤，说明噪音严重，重新写入清理后的文件
+            ctx_file.write_text(text, encoding="utf-8")
+
         project_id = detect_project_id()
+        agent = "default"
+        if "--agent" in sys.argv:
+            idx = sys.argv.index("--agent")
+            if idx + 1 < len(sys.argv):
+                agent = sys.argv[idx + 1]
 
         # 使用 core.summarize() 进行核心总结（LLM + 持久化 + 事实提取 + beads 同步）
-        result = core_summarize(text, project_id=project_id)
+        result = core_summarize(text, project_id=project_id, agent=agent)
 
         # 任务关联：使用 LLM 判断的任务完成状态
         from agent_memory_mcp.backends.task_backend import get_active_tasks, add_event
@@ -167,10 +192,10 @@ def _print_task_usage() -> None:
 
 
 def cmd_remember() -> None:
-    """记住一条信息，用法: agent-memory remember <content> [--tags a,b,c] [--project-id name] [--process]"""
+    """记住一条信息，用法: agent-memory remember <content> [--tags a,b,c] [--project-id name] [--agent name] [--process]"""
     try:
         if len(sys.argv) < 3:
-            print("Usage: agent-memory remember <content> [--tags a,b,c] [--project-id name] [--process]", file=sys.stderr)
+            print("Usage: agent-memory remember <content> [--tags a,b,c] [--project-id name] [--agent name] [--process]", file=sys.stderr)
             sys.exit(1)
         content = sys.argv[2]
         process = "--process" in sys.argv
@@ -179,17 +204,19 @@ def cmd_remember() -> None:
             idx = sys.argv.index("--tags")
             if idx + 1 < len(sys.argv):
                 tags = [t.strip() for t in sys.argv[idx + 1].split(",")]
+        agent = "default"
+        if "--agent" in sys.argv:
+            idx = sys.argv.index("--agent")
+            if idx + 1 < len(sys.argv):
+                agent = sys.argv[idx + 1]
         project_id = None
         if "--project-id" in sys.argv:
             idx = sys.argv.index("--project-id")
             if idx + 1 < len(sys.argv):
                 project_id = sys.argv[idx + 1]
-        if not project_id:
-            project_id = detect_project_id()
 
-        # 使用 core.remember() 进行记忆存储（包括可选的 LLM 加工）
-        # project_id 传 None 以便跨项目共享记忆（所有 cli 操作的记忆归入共享池）
-        r = core_remember(content, tags=tags, project_id=None, process=process)
+        # project_id 不传时，core.remember() 会自动 detect
+        r = core_remember(content, tags=tags, project_id=project_id, agent=agent, process=process)
         append_session_log(content)
         print(json.dumps(r, ensure_ascii=False))
     except Exception as e:

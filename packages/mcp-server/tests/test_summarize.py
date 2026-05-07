@@ -16,7 +16,7 @@ class TestSummarize:
         try:
             result = generate_summary("这是一段测试会话内容。")
             assert "summary" in result
-            assert result.get("model") == "fallback-truncation"
+            assert result.get("model") == "fallback-structured"
             assert result.get("task_completed") is False
         finally:
             if old_anthropic:
@@ -25,14 +25,31 @@ class TestSummarize:
                 os.environ["OPENAI_API_KEY"] = old_openai
 
     def test_fallback_returns_text(self):
-        """fallback 包含输入文本"""
+        """fallback 结构化摘要包含输入文本"""
         import os
         old_anthropic = os.environ.pop("ANTHROPIC_API_KEY", None)
         old_openai = os.environ.pop("OPENAI_API_KEY", None)
         try:
             text = "你好，这是测试会话。"
             result = generate_summary(text)
-            assert text in result["summary"]
+            # 结构化摘要把文本归入"其他"类别
+            assert "你好" in result["summary"] or "测试会话" in result["summary"]
+            assert "facts" in result
+        finally:
+            if old_anthropic:
+                os.environ["ANTHROPIC_API_KEY"] = old_anthropic
+            if old_openai:
+                os.environ["OPENAI_API_KEY"] = old_openai
+
+    def test_fallback_deduplicates(self):
+        """fallback 结构化摘要去重"""
+        import os
+        old_anthropic = os.environ.pop("ANTHROPIC_API_KEY", None)
+        old_openai = os.environ.pop("OPENAI_API_KEY", None)
+        try:
+            text = "修复了登录bug\n修复了登录bug\n修复了登录bug"
+            result = generate_summary(text)
+            assert result["summary"].count("修复了登录bug") == 1
         finally:
             if old_anthropic:
                 os.environ["ANTHROPIC_API_KEY"] = old_anthropic

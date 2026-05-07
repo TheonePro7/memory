@@ -62,6 +62,7 @@ def add(
     content: str,
     user_id: str = "default",
     project_id: str | None = None,
+    agent: str = "default",
     tags: list[str] | None = None,
     entities: list[str] | None = None,
     actions: list[str] | None = None,
@@ -74,7 +75,7 @@ def add(
         vector = _embed(content)
         from datetime import datetime, timezone
         now = datetime.now(timezone.utc).isoformat()
-        metadata = {"user_id": user_id, "created_at": now}
+        metadata = {"user_id": user_id, "created_at": now, "agent": agent}
         if project_id:
             metadata["project_id"] = project_id
         if tags:

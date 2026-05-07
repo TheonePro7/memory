@@ -21,7 +21,9 @@
       "WebFetch(domain:deepwiki.com)",
       "WebFetch(domain:www.e-com-net.com)",
       "WebFetch(domain:json.schemastore.org)",
-      "WebFetch(domain:www.schemastore.org)"
+      "WebFetch(domain:www.schemastore.org)",
+      "WebFetch(domain:127.0.0.1)",
+      "WebFetch(domain:localhost)"
     ],
     "defaultMode": "dontAsk",
     "additionalDirectories": [

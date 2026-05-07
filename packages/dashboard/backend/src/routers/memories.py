@@ -29,7 +29,8 @@ def import_memories(payload: ImportPayload):
         if not content.strip():
             errors += 1
             continue
-        result = mem0_backend.add(content, project_id=mem.get("metadata", {}).get("project_id"))
+        meta = mem.get("metadata") or {}
+        result = mem0_backend.add(content, project_id=meta.get("project_id"), agent=meta.get("agent", "default"))
         if result.get("status") == "stored":
             count += 1
         else:

@@ -22,11 +22,56 @@ def generate_summary(conversation_text: str) -> dict:
 
 
 def _fallback(text: str) -> dict:
+    # 结构化摘要：去重、归类、提取关键点
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
+    # 去除重复行（保留顺序）
+    seen = set()
+    unique_lines = []
+    for line in lines:
+        if line not in seen:
+            seen.add(line)
+            unique_lines.append(line)
+
+    # 按类别归类
+    categories = {"任务": [], "决策": [], "配置": [], "总结": [], "其他": []}
+    for line in unique_lines:
+        lowered = line.lower()
+        if any(kw in line for kw in ("任务", "issue", "bug", "修复", "功能", "beads", "devflow")):
+            categories["任务"].append(line)
+        elif any(kw in line for kw in ("决策", "方案", "选择", "改用", "迁移")):
+            categories["决策"].append(line)
+        elif any(kw in line for kw in ("配置", "安装", "部署", "路径", "端口", "hook")):
+            categories["配置"].append(line)
+        elif any(kw in line for kw in ("日报", "总结", "完成", "验证")):
+            categories["总结"].append(line)
+        else:
+            categories["其他"].append(line)
+
+    # 构建结构化摘要
+    parts = []
+    for cat, items in categories.items():
+        if items:
+            # 去重后取前 5 条，每条不超过 200 字
+            deduped = list(dict.fromkeys(items))[:5]
+            truncated = [item[:200] for item in deduped]
+            parts.append(f"【{cat}】\n" + "\n".join(f"- {t}" for t in truncated))
+
+    summary = "\n\n".join(parts) if parts else text[:500]
+    if len(summary) > 2000:
+        summary = summary[:2000]
+
+    # facts：只提取最关键的少量事实，避免冗余存储
+    key_facts = categories["任务"][:2] + categories["决策"][:1] + categories["配置"][:1]
+    if not key_facts and categories["其他"]:
+        key_facts = [categories["其他"][0]]
+    # 单条事实不超过 200 字
+    key_facts = [f[:200] for f in key_facts[:3]]
+
     return {
-        "summary": text[:2000] if len(text) > 2000 else text,
-        "facts": [],
+        "summary": summary,
+        "facts": key_facts,
         "task_completed": False,
-        "model": "fallback-truncation",
+        "model": "fallback-structured",
     }
 
 

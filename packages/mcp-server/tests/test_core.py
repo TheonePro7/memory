@@ -99,7 +99,7 @@ class TestRemember:
             assert result == {"status": "stored", "id": "abc"}
             mock_add.assert_called_once_with(
                 "test content", project_id="test-project", tags=["tag1"],
-                entities=None, actions=None, llm_summary=None,
+                entities=None, actions=None, llm_summary=None, agent="default",
             )
 
     def test_with_process(self):
@@ -111,6 +111,7 @@ class TestRemember:
                 args, kwargs = mock_add.call_args
                 assert args[0] == "test"
                 assert kwargs["project_id"] == "p"
+                assert kwargs["agent"] == "default"
                 assert set(kwargs["tags"]) == {"auto", "manual"}
                 assert kwargs["entities"] == ["AI"]
                 assert kwargs["actions"] == ["test"]
@@ -122,7 +123,7 @@ class TestRemember:
                 remember("test", tags=["manual"], project_id="p", process=True)
                 mock_add.assert_called_once_with(
                     "test", project_id="p", tags=["manual"],
-                    entities=None, actions=None, llm_summary=None,
+                    entities=None, actions=None, llm_summary=None, agent="default",
                 )
 
 
@@ -162,9 +163,9 @@ class TestSummarize:
                         assert result["facts"] == ["fact 1", "fact 2"]
                         assert result["task_completed"] is True
                         assert mock_add.call_count == 3  # summary + 2 facts
-                        mock_add.assert_any_call("Session summary", tags=["auto-summary"], project_id="test-p")
-                        mock_add.assert_any_call("fact 1", tags=["auto-extracted"], project_id="test-p")
-                        mock_add.assert_any_call("fact 2", tags=["auto-extracted"], project_id="test-p")
+                        mock_add.assert_any_call("Session summary", tags=["auto-summary"], project_id="test-p", agent="default")
+                        mock_add.assert_any_call("fact 1", tags=["auto-extracted"], project_id="test-p", agent="default")
+                        mock_add.assert_any_call("fact 2", tags=["auto-extracted"], project_id="test-p", agent="default")
 
     def test_no_facts_skips_mem_add(self):
         mock_gen = {"summary": "Session", "facts": [], "task_completed": False}
@@ -173,7 +174,7 @@ class TestSummarize:
                 with patch("agent_memory_mcp.core.mem0_backend.add") as mock_add:
                     with patch("agent_memory_mcp.core.sync_beads"):
                         summarize("context", project_id="p")
-                        mock_add.assert_called_once_with("Session", tags=["auto-summary"], project_id="p")
+                        mock_add.assert_called_once_with("Session", tags=["auto-summary"], project_id="p", agent="default")
 
 
 class TestAdapterRegistry:
