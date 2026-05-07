@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Input, Table, Tag, Typography, Space, Select, Button, Modal, Divider, Tooltip, message } from "antd";
 import { SearchOutlined, EditOutlined, DeleteOutlined, FolderOutlined, PlusOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
@@ -18,7 +18,9 @@ export default function Memories() {
   const [agentFilter, setAgentFilter] = useState<string | undefined>(undefined);
   const [agentOptions, setAgentOptions] = useState<string[]>([]);
   const [memories, setMemories] = useState<Memory[]>([]);
+  const [totalResults, setTotalResults] = useState(0);
   const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [projects, setProjects] = useState<string[]>([]);
   const [quota, setQuota] = useState({ used: 0, total: 100, remaining: 100, bonus: 0 });
   const [installId, setInstallId] = useState("");
@@ -32,9 +34,11 @@ export default function Memories() {
     fetch(url)
       .then((r) => r.json())
       .then((data) => {
-        setMemories(data.results || []);
+        const results = data.results || [];
+        setMemories(results);
+        setTotalResults(data.total || results.length);
         const pids = new Set<string>();
-        (data.results || []).forEach((m: Memory) => {
+        results.forEach((m: Memory) => {
           const pid = m.metadata?.project_id;
           if (pid) pids.add(pid);
         });
@@ -77,6 +81,7 @@ export default function Memories() {
       title: "确认删除",
       content: `确定要删除这条记忆吗？\n"${(memory.memory || "").slice(0, 50)}..."`,
       style: { background: COLORS.bg.card },
+      styles: { body: { background: COLORS.bg.card } },
       onOk: async () => {
         if (!(await checkQuota())) return;
         const res = await fetch(`/api/memories/${memory.id}`, { method: "DELETE" });
@@ -253,11 +258,20 @@ export default function Memories() {
           <Input.Search
             placeholder="搜索记忆内容..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onSearch={(v) => search(v, projectFilter)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (debounceRef.current) clearTimeout(debounceRef.current);
+              debounceRef.current = setTimeout(() => {
+                search(e.target.value, projectFilter, agentFilter);
+              }, 300);
+            }}
+            onSearch={(v) => search(v, projectFilter, agentFilter)}
             style={{ width: 300 }}
             prefix={<SearchOutlined style={{ color: COLORS.text.tertiary }} />}
           />
+          <span style={{ fontSize: 13, color: COLORS.text.tertiary, whiteSpace: "nowrap" }}>
+            共 {totalResults} 条
+          </span>
           <Select
             allowClear
             placeholder="筛选项目"
@@ -348,7 +362,7 @@ export default function Memories() {
         columns={columns}
         loading={loading}
         pagination={{ pageSize: 20, size: "small" }}
-        rowKey={(r) => r.id || r.memory || Math.random().toString()}
+        rowKey={(r) => r.id || r.memory || `mem-${Math.random()}`}
         locale={{
           emptyText: memories.length === 0 && !loading ? (
             <div style={{ padding: "32px 0", color: COLORS.text.tertiary }}>
@@ -381,7 +395,7 @@ export default function Memories() {
         onCancel={() => setEditModal({ visible: false, memory: null })}
         okText="保存"
         cancelText="取消"
-        style={{ background: COLORS.bg.card }}
+        styles={{ body: { background: COLORS.bg.card } }}
       >
         <Input.TextArea
           value={editContent}

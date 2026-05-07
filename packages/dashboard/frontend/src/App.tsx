@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { ConfigProvider, Layout, Typography, Space } from "antd";
+import React, { useEffect, useState, lazy, Suspense } from "react";
+import { ConfigProvider, Layout, Typography, Space, Button, Spin } from "antd";
 import {
   BarChartOutlined,
   DatabaseOutlined,
@@ -10,13 +10,47 @@ import {
 } from "@ant-design/icons";
 import { themeConfig, COLORS } from "./theme";
 import Overview from "./pages/Overview";
-import Memories from "./pages/Memories";
-import Agents from "./pages/Agents";
-import Timeline from "./pages/Timeline";
-import Tasks from "./pages/Tasks";
-import SettingsPage from "./pages/Settings";
+const Memories = lazy(() => import("./pages/Memories"));
+const Agents = lazy(() => import("./pages/Agents"));
+const Timeline = lazy(() => import("./pages/Timeline"));
+const Tasks = lazy(() => import("./pages/Tasks"));
+const SettingsPage = lazy(() => import("./pages/Settings"));
 
 const { Header, Content } = Layout;
+
+/* 简易错误边界 — 捕获子组件渲染崩溃，防止全局白屏 */
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  state = { hasError: false, error: null };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 40, textAlign: "center", color: COLORS.text.secondary }}>
+          <Typography.Title level={4} style={{ color: COLORS.text.primary }}>
+            页面渲染异常
+          </Typography.Title>
+          <Typography.Paragraph style={{ color: COLORS.text.tertiary, fontSize: 13 }}>
+            {this.state.error?.message}
+          </Typography.Paragraph>
+          <Button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+          >
+            重新加载
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export interface Stats {
   total_memories: number;
@@ -178,7 +212,11 @@ function App() {
             width: "100%",
           }}
         >
-          {pages[page] || <Overview stats={stats} />}
+          <ErrorBoundary>
+            <Suspense fallback={<div style={{ padding: 80, textAlign: "center" }}><Spin /></div>}>
+              {pages[page] || <Overview stats={stats} />}
+            </Suspense>
+          </ErrorBoundary>
         </Content>
       </Layout>
     </ConfigProvider>

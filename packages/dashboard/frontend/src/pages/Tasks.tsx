@@ -31,6 +31,8 @@ export default function Tasks() {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [taskDetail, setTaskDetail] = useState<Task | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchTasks = (status?: string) => {
     setLoading(true);
@@ -48,6 +50,15 @@ export default function Tasks() {
 
   useEffect(() => { fetchTasks(statusFilter); }, []);
 
+  const fetchTaskDetail = (id: string) => {
+    setDetailLoading(true);
+    fetch(`/api/tasks/${id}`)
+      .then((r) => r.json())
+      .then((data) => setTaskDetail(data.error ? null : data))
+      .catch(() => setTaskDetail(null))
+      .finally(() => setDetailLoading(false));
+  };
+
   const statusCounts = {
     todo: tasks.filter((t) => t.status === "todo").length,
     in_progress: tasks.filter((t) => t.status === "in_progress").length,
@@ -62,7 +73,7 @@ export default function Tasks() {
       key: "title",
       render: (t: string, r: Task) => (
         <a
-          onClick={() => setSelectedTask(r)}
+          onClick={() => { setSelectedTask(r); fetchTaskDetail(r.id); }}
           style={{ color: COLORS.text.primary, fontSize: 13.5 }}
         >
           {t}
@@ -137,7 +148,7 @@ export default function Tasks() {
             type="text"
             size="small"
             icon={<EyeOutlined style={{ fontSize: 14 }} />}
-            onClick={() => setSelectedTask(r)}
+            onClick={() => { setSelectedTask(r); fetchTaskDetail(r.id); }}
             style={{ color: COLORS.text.secondary }}
           />
         </Tooltip>
@@ -229,28 +240,51 @@ export default function Tasks() {
       <Modal
         title={<span style={{ color: COLORS.text.primary }}>{selectedTask?.title}</span>}
         open={!!selectedTask}
-        onCancel={() => setSelectedTask(null)}
+        onCancel={() => { setSelectedTask(null); setTaskDetail(null); }}
         footer={null}
         width={600}
-        style={{ background: COLORS.bg.card }}
+        styles={{ body: { background: COLORS.bg.card } }}
       >
-        {selectedTask && (
+        {detailLoading ? (
+          <div style={{ padding: 32, textAlign: "center", color: COLORS.text.secondary }}>加载中...</div>
+        ) : taskDetail && (
           <div>
             <Space direction="vertical" size={12} style={{ width: "100%" }}>
               <div>
                 <span style={{ color: COLORS.text.tertiary, fontSize: 12 }}>状态：</span>
                 <span style={{ color: COLORS.text.secondary, fontSize: 13 }}>
-                  {statusMeta[selectedTask.status]?.label || selectedTask.status}
+                  {statusMeta[taskDetail.status]?.label || taskDetail.status}
                 </span>
               </div>
               <div>
                 <span style={{ color: COLORS.text.tertiary, fontSize: 12 }}>来源：</span>
                 <span style={{ color: COLORS.text.secondary, fontSize: 13 }}>
-                  {selectedTask.source === "beads" ? "beads" : "agent-memory"}
+                  {taskDetail.source === "beads" ? "beads" : "agent-memory"}
                 </span>
               </div>
 
-              {selectedTask.events && selectedTask.events.length > 0 && (
+              {taskDetail.tags && taskDetail.tags.length > 0 && (
+                <div>
+                  <Typography.Text
+                    style={{
+                      fontSize: 13,
+                      color: COLORS.text.secondary,
+                      fontWeight: 500,
+                      display: "block",
+                      marginBottom: 8,
+                    }}
+                  >
+                    标签
+                  </Typography.Text>
+                  <Space size={4} wrap>
+                    {taskDetail.tags.map((t, i) => (
+                      <Tag key={i} style={{ fontSize: 12 }}>{t}</Tag>
+                    ))}
+                  </Space>
+                </div>
+              )}
+
+              {taskDetail.events && taskDetail.events.length > 0 && (
                 <div>
                   <Typography.Text
                     style={{
@@ -264,7 +298,7 @@ export default function Tasks() {
                     事件流
                   </Typography.Text>
                   <Space direction="vertical" size={6} style={{ width: "100%" }}>
-                    {selectedTask.events.map((e, i) => (
+                    {taskDetail.events.map((e, i) => (
                       <div
                         key={i}
                         style={{
@@ -287,7 +321,7 @@ export default function Tasks() {
                 </div>
               )}
 
-              {selectedTask.artifacts && selectedTask.artifacts.length > 0 && (
+              {taskDetail.artifacts && taskDetail.artifacts.length > 0 && (
                 <div>
                   <Typography.Text
                     style={{
@@ -301,7 +335,7 @@ export default function Tasks() {
                     产出物
                   </Typography.Text>
                   <Space size={6} wrap>
-                    {selectedTask.artifacts.map((a, i) => (
+                    {taskDetail.artifacts.map((a, i) => (
                       <Tag key={i} color="green" style={{ fontSize: 12 }}>
                         {a.kind}: {a.reference}
                       </Tag>

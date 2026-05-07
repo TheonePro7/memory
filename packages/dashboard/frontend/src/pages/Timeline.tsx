@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Spin, Space, Empty } from "antd";
-import { ClockCircleOutlined } from "@ant-design/icons";
+import { Typography, Spin, Space, Empty, Button } from "antd";
+import { ClockCircleOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import { COLORS } from "../theme";
 
 interface Session {
@@ -11,6 +11,16 @@ interface Session {
 export default function Timeline() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  const toggleExpand = (i: number) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
 
   useEffect(() => {
     fetch("/api/sessions?days=30")
@@ -71,12 +81,18 @@ export default function Timeline() {
                   fontSize: 13.5,
                   lineHeight: 1.6,
                   whiteSpace: "pre-wrap",
-                  maxHeight: 200,
-                  overflow: "hidden",
+                  maxHeight: expanded.has(i) ? "none" : 200,
+                  overflow: expanded.has(i) ? "visible" : "hidden",
                   flex: 1,
+                  cursor: "pointer",
                 }}
+                onClick={() => toggleExpand(i)}
               >
-                {item.content.slice(0, 500)}
+                {item.content.slice(0, expanded.has(i) ? undefined : 500)}
+                <span style={{ fontSize: 11, color: COLORS.accent.blue, marginLeft: 8 }}>
+                  {expanded.has(i) ? "收起" : "展开"}
+                  {expanded.has(i) ? <UpOutlined style={{ fontSize: 10, marginLeft: 4 }} /> : <DownOutlined style={{ fontSize: 10, marginLeft: 4 }} />}
+                </span>
               </div>
             </div>
           ))}
