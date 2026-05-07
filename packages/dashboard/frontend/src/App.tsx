@@ -45,15 +45,18 @@ function App() {
     total_sessions: 0,
     recent_sessions: [],
   });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   const hashPage = location.hash.replace("#", "") || "overview";
   const [page, setPage] = useState(hashPage);
 
   useEffect(() => {
+    setStatsLoading(true);
     fetch("/api/stats")
       .then((r) => r.json())
       .then(setStats)
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setStatsLoading(false));
   }, []);
 
   const navigate = (key: string) => {
@@ -71,7 +74,7 @@ function App() {
   }, []);
 
   const pages: Record<string, React.ReactNode> = {
-    overview: <Overview stats={stats} />,
+    overview: <Overview stats={stats} loading={statsLoading} />,
     memories: <Memories />,
     agents: <Agents />,
     timeline: <Timeline />,

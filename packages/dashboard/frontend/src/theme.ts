@@ -1,4 +1,5 @@
 /** 设计系统 — Vercel 暗色主题 */
+import { theme } from "antd";
 import type { ThemeConfig } from "antd";
 
 export const COLORS = {
@@ -11,7 +12,7 @@ export const COLORS = {
 export const SPACING = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32, xxxl: 48 } as const;
 
 export const themeConfig: ThemeConfig = {
-  algorithm: undefined, // 完全自定义，不用 Ant Design 默认算法
+  algorithm: theme.darkAlgorithm, // 使用 Ant Design 暗色算法作为基础，确保所有组件可读
   token: {
     colorPrimary: COLORS.accent.blue,
     colorBgContainer: COLORS.bg.card,

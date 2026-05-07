@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Spin, Space } from "antd";
+import { Typography, Spin, Space, Empty } from "antd";
 import { ClockCircleOutlined } from "@ant-design/icons";
 import { COLORS } from "../theme";
 
@@ -32,9 +32,10 @@ export default function Timeline() {
       </Typography.Title>
 
       {sessions.length === 0 ? (
-        <Typography.Text style={{ color: COLORS.text.tertiary, fontSize: 14 }}>
-          暂无会话记录
-        </Typography.Text>
+        <Empty
+          description="暂无会话记录"
+          style={{ color: COLORS.text.tertiary }}
+        />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {sessions.map((item, i) => (

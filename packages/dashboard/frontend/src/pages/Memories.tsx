@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Input, Table, Tag, Typography, Space, Select, Button, Modal, Divider, Tooltip } from "antd";
+import { Input, Table, Tag, Typography, Space, Select, Button, Modal, Divider, Tooltip, message } from "antd";
 import { SearchOutlined, EditOutlined, DeleteOutlined, FolderOutlined, PlusOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { COLORS } from "../theme";
@@ -51,10 +51,8 @@ export default function Memories() {
   useEffect(() => {
     fetch("/api/quota").then(r => r.json()).then(setQuota);
     fetch("/api/install-id").then(r => r.json()).then(d => setInstallId(d.id)).catch(() => {});
-    fetch("/api/agents/scan").then(r => r.json()).then(data => {
-      const agents = [...(data.builtin || []), ...(data.custom || [])]
-        .filter((a: any) => a.installed)
-        .map((a: any) => a.name);
+    fetch("/api/agents").then(r => r.json()).then(data => {
+      const agents = (data.agents || []).map((a: any) => a.name);
       setAgentOptions(agents);
     }).catch(() => {});
   }, []);
@@ -84,6 +82,7 @@ export default function Memories() {
         const res = await fetch(`/api/memories/${memory.id}`, { method: "DELETE" });
         if (res.status === 403 || res.status === 404) return;
         setQuota(await fetch("/api/quota").then(r => r.json()));
+        message.success("记忆已删除");
         search(query, projectFilter, agentFilter);
       },
     });
@@ -307,7 +306,7 @@ export default function Memories() {
                   const text = await file.text();
                   try {
                     const data = JSON.parse(text);
-                    if (!data.memories) { alert("无效的导入文件格式"); return; }
+                    if (!data.memories) { message.error("无效的导入文件格式"); return; }
                     const res = await fetch("/api/memories/import", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -320,7 +319,7 @@ export default function Memories() {
                     });
                     search(query, projectFilter, agentFilter);
                   } catch {
-                    alert("无效的 JSON 文件");
+                    message.error("无效的 JSON 文件");
                   }
                 };
                 input.click();
@@ -376,6 +375,7 @@ export default function Memories() {
           if (res.status === 403 || res.status === 404) return;
           setQuota(await fetch("/api/quota").then(r => r.json()));
           setEditModal({ visible: false, memory: null });
+          message.success("记忆已更新");
           search(query, projectFilter, agentFilter);
         }}
         onCancel={() => setEditModal({ visible: false, memory: null })}

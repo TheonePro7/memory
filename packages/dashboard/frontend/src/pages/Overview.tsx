@@ -4,7 +4,7 @@ import { DatabaseOutlined, MessageOutlined, HistoryOutlined } from "@ant-design/
 import { COLORS } from "../theme";
 import type { Stats } from "../App";
 
-interface Props { stats: Stats }
+interface Props { stats: Stats; loading?: boolean }
 
 const statCards = [
   { title: "记忆总数", value: (s: Stats) => s.total_memories, icon: <DatabaseOutlined />, color: COLORS.accent.blue },
@@ -12,7 +12,34 @@ const statCards = [
   { title: "近 7 天会话", value: (s: Stats) => s.recent_sessions.length, icon: <HistoryOutlined />, color: COLORS.accent.orange },
 ];
 
-export default function Overview({ stats }: Props) {
+export default function Overview({ stats, loading }: Props) {
+  if (loading) {
+    return (
+      <div>
+        <Typography.Title
+          level={3}
+          style={{ margin: "0 0 24px 0", color: COLORS.text.primary, fontWeight: 600 }}
+        >
+          总览
+        </Typography.Title>
+        <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
+          {[1, 2, 3].map((i) => (
+            <Col span={8} key={i}>
+              <Card loading style={{ background: COLORS.bg.card }} />
+            </Col>
+          ))}
+        </Row>
+        <Typography.Title
+          level={5}
+          style={{ margin: "0 0 12px 0", color: COLORS.text.secondary, fontWeight: 500 }}
+        >
+          最近会话
+        </Typography.Title>
+        <Card loading style={{ background: COLORS.bg.card }} />
+      </div>
+    );
+  }
+
   return (
     <div>
       {/* 页面标题 */}

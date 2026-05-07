@@ -31,9 +31,9 @@ export default function Agents() {
     name: "", type: "other", mcp_config_dir: "", project_dir: "",
   });
 
-  const scan = () => {
+  const scan = (refresh = false) => {
     setLoading(true);
-    fetch("/api/agents/scan")
+    fetch(`/api/agents/scan${refresh ? '?refresh=true' : ''}`)
       .then((r) => r.json())
       .then((data) => {
         setBuiltin(data.builtin || []);
@@ -155,7 +155,7 @@ export default function Agents() {
           Agent
         </Typography.Title>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={scan} loading={loading}>
+          <Button icon={<ReloadOutlined />} onClick={() => scan(true)} loading={loading}>
             重新扫描
           </Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddModal(true)}>

@@ -1,6 +1,7 @@
 """Agent 管理 API"""
 import logging
-from fastapi import APIRouter, HTTPException
+import time as _time
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
 
@@ -10,6 +11,11 @@ from scanners.custom_store import CustomAgentStore
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agents", tags=["agents"])
 store = CustomAgentStore()
+
+# 模块级扫描缓存 — 5 分钟 TTL
+_scan_cache: dict | None = None
+_scan_cache_time: float = 0.0
+_SCAN_CACHE_TTL = 300
 
 
 class CustomAgentCreate(BaseModel):
@@ -29,10 +35,18 @@ class CustomAgentUpdate(BaseModel):
 
 
 @router.get("/scan")
-def scan_agents():
-    """扫描所有已安装 Agent（内置 + 自定义）。"""
-    custom = store.list_all()
-    return scan_all(custom)
+def scan_agents(refresh: bool = Query(False, description="强制重新扫描，不使用缓存")):
+    """扫描所有已安装 Agent（内置 + 自定义）。
+
+    结果默认缓存 5 分钟，传 ?refresh=true 强制重新扫描。
+    """
+    global _scan_cache, _scan_cache_time
+    now = _time.time()
+    if refresh or _scan_cache is None or (now - _scan_cache_time) > _SCAN_CACHE_TTL:
+        custom = store.list_all()
+        _scan_cache = scan_all(custom)
+        _scan_cache_time = now
+    return _scan_cache
 
 
 @router.get("")
