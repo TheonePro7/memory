@@ -94,6 +94,8 @@ export default function Tasks() {
       title: "标题",
       dataIndex: "title",
       key: "title",
+      width: 200,
+      ellipsis: true,
       render: (t: string, r: Task) => (
         <a
           onClick={() => { setSelectedTask(r); fetchTaskDetail(r.id); }}
@@ -256,6 +258,7 @@ export default function Tasks() {
           columns={columns}
           loading={loading}
           pagination={{ pageSize: 20, size: "small" }}
+          scroll={{ x: 650 }}
           locale={{ emptyText: <span style={{ color: "#52525b" }}>暂无任务数据</span> }}
           rowKey="id"
           size="middle"

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { apiFetch } from "./api";
 import { getCache, setCache } from "./cache";
-import { ConfigProvider, Layout, Typography, Space, Button, Spin, message } from "antd";
+import { ConfigProvider, Layout, Typography, Space, Button, Spin, message, Alert, Tooltip } from "antd";
 import {
   BarChartOutlined,
   DatabaseOutlined,
@@ -9,6 +9,7 @@ import {
   HistoryOutlined,
   CheckSquareOutlined,
   SettingOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 import { themeConfig, COLORS } from "./theme";
 import Overview from "./pages/Overview";
@@ -76,6 +77,7 @@ const navItems: NavItem[] = [
 ];
 
 function App() {
+  const [online, setOnline] = useState(navigator.onLine);
   const [stats, setStats] = useState<Stats>({
     total_memories: 0,
     total_sessions: 0,
@@ -85,6 +87,17 @@ function App() {
 
   const hashPage = location.hash.replace("#", "") || "overview";
   const [page, setPage] = useState(hashPage);
+
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
 
   useEffect(() => {
     setStatsLoading(true);
@@ -212,8 +225,18 @@ function App() {
             })}
           </nav>
 
-          {/* 右侧占位 */}
-          <div style={{ width: 120 }} />
+          {/* 右侧操作 */}
+          <Space size={8} style={{ width: 120, justifyContent: "flex-end" }}>
+            <Tooltip title="刷新当前页面">
+              <Button
+                type="text"
+                size="small"
+                icon={<ReloadOutlined style={{ fontSize: 14 }} />}
+                onClick={() => window.location.reload()}
+                style={{ color: COLORS.text.secondary }}
+              />
+            </Tooltip>
+          </Space>
         </Header>
 
         {/* 页面内容 */}
@@ -225,6 +248,16 @@ function App() {
             width: "100%",
           }}
         >
+          {!online && (
+            <Alert
+              message="网络连接已断开"
+              description="Dashboard 无法连接到后端服务，部分功能不可用。请检查后端是否启动。"
+              type="error"
+              showIcon
+              closable
+              style={{ marginBottom: 16 }}
+            />
+          )}
           <ErrorBoundary>
             <Suspense fallback={<div style={{ padding: 80, textAlign: "center" }}><Spin /></div>}>
               {pages[page] || <Overview stats={stats} />}

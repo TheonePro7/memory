@@ -387,6 +387,7 @@ export default function Memories() {
         columns={columns}
         loading={loading}
         pagination={{ pageSize: 20, size: "small" }}
+        scroll={{ x: 700 }}
         rowKey={(r) => r.id || r.memory || `mem-${Math.random()}`}
         locale={{
           emptyText: memories.length === 0 && !loading ? (
