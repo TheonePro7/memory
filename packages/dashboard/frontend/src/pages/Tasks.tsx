@@ -67,9 +67,11 @@ function TaskCard({
   onAddBlockerNote?: (t: Task) => void;
 }) {
   const beadsRef = useMemo(() => {
-    const art = task.artifacts?.find((a) => a.kind === "beads_issue");
+    const arts = Array.isArray(task.artifacts) ? task.artifacts : [];
+    const tags = Array.isArray(task.tags) ? task.tags : [];
+    const art = arts.find((a) => a.kind === "beads_issue");
     if (art) return art.reference;
-    const tag = task.tags?.find((t) => t.startsWith("beads-"));
+    const tag = tags.find((t) => t.startsWith("beads-"));
     if (tag) return tag.replace("beads-", "");
     return null;
   }, [task]);
@@ -407,23 +409,24 @@ export default function Tasks() {
   };
 
   // 统计
+  const safeTasks = useMemo(() => Array.isArray(tasks) ? tasks : [], [tasks]);
   const statusCounts = useMemo(() => ({
-    todo: tasks.filter((t) => t.status === "todo").length,
-    in_progress: tasks.filter((t) => t.status === "in_progress").length,
-    blocked: tasks.filter((t) => t.status === "blocked").length,
-    done: tasks.filter((t) => t.status === "done").length,
-  }), [tasks]);
+    todo: safeTasks.filter((t) => t.status === "todo").length,
+    in_progress: safeTasks.filter((t) => t.status === "in_progress").length,
+    blocked: safeTasks.filter((t) => t.status === "blocked").length,
+    done: safeTasks.filter((t) => t.status === "done").length,
+  }), [safeTasks]);
 
   const totalTasks = tasks.length;
 
   // 按状态分组
   const groupedTasks = useMemo(() => ({
-    todo: tasks.filter((t) => t.status === "todo" && (!activeGroup || activeGroup === "todo")),
-    in_progress: tasks.filter((t) => t.status === "in_progress" && (!activeGroup || activeGroup === "in_progress")),
-    blocked: tasks.filter((t) => t.status === "blocked" && (!activeGroup || activeGroup === "blocked")),
-  }), [tasks, activeGroup]);
+    todo: safeTasks.filter((t) => t.status === "todo" && (!activeGroup || activeGroup === "todo")),
+    in_progress: safeTasks.filter((t) => t.status === "in_progress" && (!activeGroup || activeGroup === "in_progress")),
+    blocked: safeTasks.filter((t) => t.status === "blocked" && (!activeGroup || activeGroup === "blocked")),
+  }), [safeTasks, activeGroup]);
 
-  const doneTasks = useMemo(() => tasks.filter((t) => t.status === "done"), [tasks]);
+  const doneTasks = useMemo(() => safeTasks.filter((t) => t.status === "done"), [safeTasks]);
   const [showDone, setShowDone] = useState(false);
 
   if (loading && tasks.length === 0) {

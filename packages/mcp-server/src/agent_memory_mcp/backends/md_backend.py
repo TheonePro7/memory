@@ -6,22 +6,33 @@ import re
 
 # 无意义内容的过滤模式
 _NOISE_PATTERNS: list[re.Pattern] = [
-    re.compile(r"^(摘要A|摘要B|摘要C)$"),
-    re.compile(r"^#\s*测试摘要\s+test_md_backend"),
+    re.compile(r"^(摘要A|摘要B|摘要C|摘要D|摘要E)$"),
+    re.compile(r"^#\s*测试摘要"),
     re.compile(r"^测试内容"),
-    re.compile(r"^这是[一|测]个?测试"),
+    re.compile(r"这是测试"),
+    re.compile(r"^[#]*\s*测试"),
+    re.compile(r"^test\s*content"),
+    re.compile(r"^[#]*\s*test\s+summary"),
 ]
 
 
 def _is_noise_line(line: str) -> bool:
     """检查某行是否为测试/无意义内容。"""
     stripped = line.strip().rstrip("—\\-")
-    if not stripped or stripped == "---":
+    if not stripped or stripped in ("---", "---"):
         return True
     for pat in _NOISE_PATTERNS:
         if pat.match(stripped):
             return True
     return False
+
+
+def _is_empty_block(block: str) -> bool:
+    """检查会话块是否只有标题没有实际内容。"""
+    lines = [l.strip() for l in block.strip().split("\n") if l.strip()]
+    # 去掉标题行和分隔符后，如果没剩几行就算空块
+    meaningful = [l for l in lines if not l.startswith("## ") and l != "---"]
+    return len(meaningful) < 1
 
 
 def _filter_content(content: str) -> str:
@@ -49,7 +60,7 @@ def _extract_sessions(content: str) -> list[dict]:
     sessions: list[dict] = []
     for block in blocks:
         block = block.strip()
-        if not block or _is_noise_line(block):
+        if not block or _is_noise_line(block) or _is_empty_block(block):
             continue
         # 提取标题行
         title_match = re.match(r"##\s+(.+)", block)
@@ -116,7 +127,8 @@ def get_recent(days: int = 7) -> list[dict]:
             if not filtered:
                 continue
             sessions = _extract_sessions(filtered)
-            # 计算该日摘要标签
+            if not sessions:
+                continue  # 全是空会话，跳过该日期
             all_tags: set[str] = set()
             agent_projects: set[str] = set()
             for s in sessions:
