@@ -6,7 +6,7 @@ import {
 import {
   CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined,
   InboxOutlined, EyeOutlined, DeleteOutlined, PlusOutlined,
-  EditOutlined, LinkOutlined, BugOutlined,
+  EditOutlined, LinkOutlined, BugOutlined, RobotOutlined,
   ArrowRightOutlined,
 } from "@ant-design/icons";
 import { COLORS } from "../theme";
@@ -19,6 +19,7 @@ interface Task {
   status: string;
   priority: string;
   source: string;
+  agent: string;
   tags: string[];
   events?: { type: string; content: string; created_at: string }[];
   artifacts?: { kind: string; reference: string }[];
@@ -100,7 +101,7 @@ function TaskCard({
       </div>
 
       {/* 标签行 */}
-      {task.tags && task.tags.length > 0 && (
+      {Array.isArray(task.tags) && task.tags.length > 0 && (
         <div style={{ marginBottom: 8, display: "flex", gap: 4, flexWrap: "wrap" }}>
           {task.tags.slice(0, 4).map((t, i) => (
             <Tag key={i} style={{ fontSize: 10, lineHeight: "16px", padding: "0 4px", margin: 0 }}>{t}</Tag>
@@ -109,7 +110,20 @@ function TaskCard({
       )}
 
       {/* 来源徽标 */}
-      <div style={{ marginBottom: 8, display: "flex", gap: 6 }}>
+      <div style={{ marginBottom: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {task.agent && (
+          <Tag
+            icon={<RobotOutlined />}
+            style={{
+              fontSize: 10, lineHeight: "16px", padding: "0 4px", margin: 0,
+              background: `${COLORS.accent.blue}20`,
+              color: COLORS.accent.blue,
+              border: `1px solid ${COLORS.accent.blue}40`,
+            }}
+          >
+            {task.agent}
+          </Tag>
+        )}
         {beadsRef && (
           <Tag
             icon={<LinkOutlined />}
@@ -123,7 +137,7 @@ function TaskCard({
             beads #{beadsRef}
           </Tag>
         )}
-        {task.source === "agent-memory" && !beadsRef && (
+        {task.source === "agent-memory" && !beadsRef && !task.agent && (
           <Tag style={{ fontSize: 10, lineHeight: "16px", padding: "0 4px", margin: 0 }}>手动</Tag>
         )}
       </div>
@@ -238,6 +252,11 @@ export default function Tasks() {
   const [seeding, setSeeding] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [priorityFilter, setPriorityFilter] = useState<string | undefined>(undefined);
+  const [agentFilter, setAgentFilter] = useState<string | undefined>(() => {
+    const p = new URLSearchParams(location.search);
+    return p.get("agent") || undefined;
+  });
+  const [agentOptions, setAgentOptions] = useState<string[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskDetail, setTaskDetail] = useState<Task | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -247,6 +266,7 @@ export default function Tasks() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newPriority, setNewPriority] = useState("medium");
+  const [newAgent, setNewAgent] = useState("");
   const [creating, setCreating] = useState(false);
 
   // 编辑任务 Modal
@@ -255,6 +275,7 @@ export default function Tasks() {
   const [editTitle, setEditTitle] = useState("");
   const [editPriority, setEditPriority] = useState("medium");
   const [editTags, setEditTags] = useState("");
+  const [editAgent, setEditAgent] = useState("");
   const [saving, setSaving] = useState(false);
 
   // 阻塞备注 Modal
@@ -263,12 +284,21 @@ export default function Tasks() {
   const [blockerNote, setBlockerNote] = useState("");
   const [blockerSaving, setBlockerSaving] = useState(false);
 
-  const fetchTasks = useCallback((status?: string, priority?: string, skipCache = false) => {
+  /* ── URL 参数同步 ── */
+  const syncAgentParam = (agent: string | undefined) => {
+    const url = new URL(window.location.href);
+    if (agent) url.searchParams.set("agent", agent);
+    else url.searchParams.delete("agent");
+    window.history.replaceState(null, "", url.toString());
+  };
+
+  const fetchTasks = useCallback((status?: string, priority?: string, agent?: string, skipCache = false) => {
     setLoading(true);
     let url = "/api/tasks";
     const params = new URLSearchParams();
     if (status) params.set("status", status);
     if (priority) params.set("priority", priority);
+    if (agent) params.set("agent", agent);
     const qs = params.toString();
     if (qs) url += "?" + qs;
 
@@ -290,9 +320,24 @@ export default function Tasks() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { fetchTasks(statusFilter, priorityFilter); }, []);
+  useEffect(() => {
+    fetchTasks(statusFilter, priorityFilter, agentFilter);
+  }, []);
 
-  const refetch = (skipCache = false) => fetchTasks(statusFilter, priorityFilter, skipCache);
+  /* ── 首次加载时获取 agent 选项 ── */
+  useEffect(() => {
+    apiFetch<{ agents: string[] }>("/api/tasks/agents")
+      .then((data) => setAgentOptions(data.agents || []))
+      .catch(() => { /* ignore */ });
+  }, []);
+
+  const refetch = (skipCache = false) => fetchTasks(statusFilter, priorityFilter, agentFilter, skipCache);
+
+  const handleAgentChange = (agent: string | undefined) => {
+    setAgentFilter(agent);
+    syncAgentParam(agent);
+    fetchTasks(statusFilter, priorityFilter, agent, true);
+  };
 
   const fetchTaskDetail = (id: string) => {
     setDetailLoading(true);
@@ -319,12 +364,13 @@ export default function Tasks() {
       await apiFetch<Task>("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle.trim(), priority: newPriority }),
+        body: JSON.stringify({ title: newTitle.trim(), priority: newPriority, agent: newAgent || agentFilter || "" }),
       });
       message.success("任务已创建");
       setCreateOpen(false);
       setNewTitle("");
       setNewPriority("medium");
+      setNewAgent("");
       invalidateCache("/api/tasks");
       refetch(true);
     } catch { message.error("创建失败"); }
@@ -362,6 +408,7 @@ export default function Tasks() {
     setEditTitle(task.title);
     setEditPriority(task.priority || "medium");
     setEditTags((task.tags || []).join(", "));
+    setEditAgent(task.agent || "");
     setEditOpen(true);
   };
 
@@ -369,14 +416,16 @@ export default function Tasks() {
     if (!editTitle.trim()) { message.warning("标题不能为空"); return; }
     setSaving(true);
     try {
+      const body: Record<string, unknown> = {
+        title: editTitle.trim(),
+        priority: editPriority,
+        tags: editTags ? editTags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+      };
+      if (editAgent) body.agent = editAgent;
       await apiFetch<Task>(`/api/tasks/${editId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: editTitle.trim(),
-          priority: editPriority,
-          tags: editTags ? editTags.split(",").map((t) => t.trim()).filter(Boolean) : [],
-        }),
+        body: JSON.stringify(body),
       });
       message.success("任务已更新");
       setEditOpen(false);
@@ -509,10 +558,20 @@ export default function Tasks() {
       <div style={{ marginBottom: 16, display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <Select
           allowClear
+          placeholder="筛选 Agent"
+          style={{ width: 160 }}
+          value={agentFilter}
+          onChange={handleAgentChange}
+          options={[
+            ...agentOptions.map((a) => ({ value: a, label: a })),
+          ]}
+        />
+        <Select
+          allowClear
           placeholder="筛选状态"
           style={{ width: 140 }}
           value={statusFilter}
-          onChange={(v) => { setStatusFilter(v ?? undefined); fetchTasks(v ?? undefined, priorityFilter, true); }}
+          onChange={(v) => { setStatusFilter(v ?? undefined); fetchTasks(v ?? undefined, priorityFilter, agentFilter, true); }}
           options={Object.entries(statusMeta).map(([v, m]) => ({ value: v, label: m.label }))}
         />
         <Select
@@ -520,7 +579,7 @@ export default function Tasks() {
           placeholder="筛选优先级"
           style={{ width: 140 }}
           value={priorityFilter}
-          onChange={(v) => { setPriorityFilter(v ?? undefined); fetchTasks(statusFilter, v ?? undefined, true); }}
+          onChange={(v) => { setPriorityFilter(v ?? undefined); fetchTasks(statusFilter, v ?? undefined, agentFilter, true); }}
           options={Object.entries(priorityMeta).map(([v, m]) => ({ value: v, label: m.label }))}
         />
         {activeGroup && (
@@ -651,7 +710,7 @@ export default function Tasks() {
         title={<span style={{ color: COLORS.text.primary }}>新建任务</span>}
         open={createOpen}
         onOk={handleCreate}
-        onCancel={() => { setCreateOpen(false); setNewTitle(""); setNewPriority("medium"); }}
+        onCancel={() => { setCreateOpen(false); setNewTitle(""); setNewPriority("medium"); setNewAgent(""); }}
         okText="创建"
         cancelText="取消"
         okButtonProps={{ loading: creating }}
@@ -661,6 +720,23 @@ export default function Tasks() {
           <div>
             <Typography.Text style={{ color: COLORS.text.secondary, fontSize: 13, display: "block", marginBottom: 6 }}>标题</Typography.Text>
             <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="输入任务标题" onPressEnter={handleCreate} />
+          </div>
+          <div>
+            <Typography.Text style={{ color: COLORS.text.secondary, fontSize: 13, display: "block", marginBottom: 6 }}>Agent</Typography.Text>
+            <Select
+              allowClear
+              value={newAgent || agentFilter || undefined}
+              onChange={(v) => setNewAgent(v || "")}
+              style={{ width: "100%" }}
+              placeholder="选择 Agent"
+              options={agentOptions.map((a) => ({ value: a, label: a }))}
+            />
+            <Input
+              value={newAgent}
+              onChange={(e) => setNewAgent(e.target.value)}
+              placeholder="或手动输入 Agent 名称"
+              style={{ marginTop: 6 }}
+            />
           </div>
           <div>
             <Typography.Text style={{ color: COLORS.text.secondary, fontSize: 13, display: "block", marginBottom: 6 }}>优先级</Typography.Text>
@@ -686,6 +762,23 @@ export default function Tasks() {
           <div>
             <Typography.Text style={{ color: COLORS.text.secondary, fontSize: 13, display: "block", marginBottom: 6 }}>标题</Typography.Text>
             <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+          </div>
+          <div>
+            <Typography.Text style={{ color: COLORS.text.secondary, fontSize: 13, display: "block", marginBottom: 6 }}>Agent</Typography.Text>
+            <Select
+              allowClear
+              value={editAgent || undefined}
+              onChange={(v) => setEditAgent(v || "")}
+              style={{ width: "100%" }}
+              placeholder="选择 Agent"
+              options={agentOptions.map((a) => ({ value: a, label: a }))}
+            />
+            <Input
+              value={editAgent}
+              onChange={(e) => setEditAgent(e.target.value)}
+              placeholder="或手动输入 Agent 名称"
+              style={{ marginTop: 6 }}
+            />
           </div>
           <div>
             <Typography.Text style={{ color: COLORS.text.secondary, fontSize: 13, display: "block", marginBottom: 6 }}>优先级</Typography.Text>
@@ -726,6 +819,12 @@ export default function Tasks() {
                   {priorityMeta[taskDetail.priority]?.label || taskDetail.priority}
                 </Tag>
               </div>
+              {taskDetail.agent && (
+                <div>
+                  <span style={{ color: COLORS.text.tertiary, fontSize: 12 }}>Agent：</span>
+                  <span style={{ color: COLORS.text.secondary, fontSize: 13 }}>{taskDetail.agent}</span>
+                </div>
+              )}
               <div>
                 <span style={{ color: COLORS.text.tertiary, fontSize: 12 }}>来源：</span>
                 <span style={{ color: COLORS.text.secondary, fontSize: 13 }}>

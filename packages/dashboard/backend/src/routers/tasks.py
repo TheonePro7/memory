@@ -13,12 +13,14 @@ class TaskCreate(BaseModel):
     title: str
     project_id: str = "default"
     priority: str = "medium"
+    agent: str = ""
 
 
 class TaskUpdate(BaseModel):
     title: str | None = None
     priority: str | None = None
     tags: list[str] | None = None
+    agent: str | None = None
 
 
 def _make_error(status: int, message: str) -> JSONResponse:
@@ -26,9 +28,9 @@ def _make_error(status: int, message: str) -> JSONResponse:
 
 
 @router.get("/tasks")
-def list_tasks(project_id: str = "default", status: str | None = None):
+def list_tasks(project_id: str = "default", status: str | None = None, agent: str | None = None):
     try:
-        tasks = task_backend.list_tasks(project_id=project_id, status=status)
+        tasks = task_backend.list_tasks(project_id=project_id, status=status, agent=agent)
         return {"tasks": tasks, "total": len(tasks)}
     except Exception as e:
         return _make_error(500, f"任务列表加载失败: {str(e)}")
@@ -41,6 +43,16 @@ def get_active_tasks(project_id: str = "default"):
         return {"tasks": tasks, "total": len(tasks)}
     except Exception as e:
         return _make_error(500, f"活跃任务加载失败: {str(e)}")
+
+
+@router.get("/tasks/agents")
+def list_task_agents(project_id: str = "default"):
+    """返回 tasks 表中所有不重复的 agent。"""
+    try:
+        agents = task_backend.list_agents_from_tasks(project_id=project_id)
+        return {"agents": agents}
+    except Exception as e:
+        return _make_error(500, f"任务 agent 列表加载失败: {str(e)}")
 
 
 @router.get("/tasks/{task_id}")
@@ -57,7 +69,7 @@ def get_task(task_id: str):
 @router.post("/tasks")
 def create_task(body: TaskCreate):
     try:
-        t = task_backend.create_task(title=body.title, project_id=body.project_id, priority=body.priority)
+        t = task_backend.create_task(title=body.title, project_id=body.project_id, priority=body.priority, agent=body.agent)
         return t
     except Exception as e:
         return _make_error(500, f"任务创建失败: {str(e)}")
@@ -113,6 +125,7 @@ def update_task(task_id: str, update: TaskUpdate):
             title=update.title,
             priority=update.priority,
             tags=update.tags,
+            agent=update.agent,
         )
         if not t:
             return _make_error(404, "任务不存在")
@@ -126,15 +139,15 @@ def seed_tasks():
     """创建一组示例任务。"""
     try:
         samples = [
-            ("搭建 CLI 项目骨架", "medium", "todo"),
-            ("设计记忆存储接口", "medium", "in_progress"),
-            ("实现 MCP 服务端集成", "high", "done"),
-            ("编写单元测试覆盖", "medium", "done"),
-            ("优化搜索性能", "low", "todo"),
+            ("搭建 CLI 项目骨架", "medium", "todo", "devflow"),
+            ("设计记忆存储接口", "medium", "in_progress", "devflow"),
+            ("实现 MCP 服务端集成", "high", "done", "devflow"),
+            ("编写单元测试覆盖", "medium", "done", "devflow"),
+            ("优化搜索性能", "low", "todo", "devflow"),
         ]
         count = 0
-        for title, priority, status in samples:
-            t = task_backend.create_task(title=title, priority=priority)
+        for title, priority, status, agent in samples:
+            t = task_backend.create_task(title=title, priority=priority, agent=agent)
             if status != "todo":
                 task_backend.update_status(t["id"], status)
             count += 1

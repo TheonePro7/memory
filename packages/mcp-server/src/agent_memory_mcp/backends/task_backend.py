@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
     source TEXT NOT NULL DEFAULT 'agent-memory',
     source_id TEXT,
+    agent TEXT NOT NULL DEFAULT '',
     title TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'todo',
     priority TEXT NOT NULL DEFAULT 'medium',
@@ -71,6 +72,20 @@ def _init_db() -> None:
     with closing(_get_conn()) as conn:
         conn.executescript(SCHEMA)
         conn.commit()
+    _migrate()
+
+
+def _migrate() -> None:
+    """运行数据库迁移（新增列等）。"""
+    with closing(_get_conn()) as conn:
+        # 检查 agent 列是否存在
+        cols = conn.execute("PRAGMA table_info(tasks)").fetchall()
+        col_names = {c["name"] for c in cols}
+        if "agent" not in col_names:
+            conn.execute("ALTER TABLE tasks ADD COLUMN agent TEXT NOT NULL DEFAULT ''")
+        # 确保已有 agent 数据不空
+        conn.execute("UPDATE tasks SET agent='' WHERE agent IS NULL")
+        conn.commit()
 
 
 def _now() -> str:
@@ -78,7 +93,9 @@ def _now() -> str:
 
 
 def _row_to_task(r: sqlite3.Row) -> dict:
+    agent_val = r["agent"] if r["agent"] is not None else ""
     return {"id": r["id"], "source": r["source"], "source_id": r["source_id"],
+            "agent": agent_val,
             "title": r["title"], "status": r["status"], "priority": r["priority"],
             "project_id": r["project_id"],
             "tags": r["tags"].split(",") if r["tags"] else [],
@@ -94,15 +111,16 @@ def create_task(
     tags: list[str] | None = None,
     source: str = "agent-memory",
     source_id: str | None = None,
+    agent: str = "",
 ) -> dict:
     _init_db()
     tid = str(uuid.uuid4())
     now = _now()
     with closing(_get_conn()) as conn:
         conn.execute(
-            "INSERT INTO tasks (id, source, source_id, title, status, priority, project_id, tags, created_at, updated_at) "
-            "VALUES (?, ?, ?, ?, 'todo', ?, ?, ?, ?, ?)",
-            (tid, source, source_id, title, priority, project_id,
+            "INSERT INTO tasks (id, source, source_id, agent, title, status, priority, project_id, tags, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, 'todo', ?, ?, ?, ?, ?)",
+            (tid, source, source_id, agent or "", title, priority, project_id,
              ",".join(tags) if tags else None, now, now),
         )
         conn.commit()
@@ -121,10 +139,12 @@ def get_task(task_id: str) -> dict | None:
         artifacts = conn.execute(
             "SELECT * FROM task_artifacts WHERE task_id=? ORDER BY created_at", (task_id,)
         ).fetchall()
+    agent_val = row["agent"] if row["agent"] is not None else ""
     return {
         "id": row["id"],
         "source": row["source"],
         "source_id": row["source_id"],
+        "agent": agent_val,
         "title": row["title"],
         "status": row["status"],
         "priority": row["priority"],
@@ -140,6 +160,7 @@ def get_task(task_id: str) -> dict | None:
 def list_tasks(
     project_id: str = "default",
     status: str | None = None,
+    agent: str | None = None,
     limit: int = 50,
 ) -> list[dict]:
     _init_db()
@@ -149,6 +170,9 @@ def list_tasks(
         if status:
             where += " AND status=?"
             params.append(status)
+        if agent:
+            where += " AND agent=?"
+            params.append(agent)
         rows = conn.execute(
             f"SELECT * FROM tasks {where} ORDER BY updated_at DESC LIMIT ?",
             params + [limit],
@@ -205,14 +229,20 @@ def add_artifact(task_id: str, kind: str, reference: str) -> dict | None:
     return get_task(task_id)
 
 
-def get_active_tasks(project_id: str = "default") -> list[dict]:
+def get_active_tasks(project_id: str = "default", agent: str | None = None) -> list[dict]:
     """返回 in_progress 和 blocked 的任务，用于 session start 注入。"""
     _init_db()
     with closing(_get_conn()) as conn:
-        rows = conn.execute(
-            "SELECT * FROM tasks WHERE project_id=? AND status IN ('in_progress','blocked') ORDER BY updated_at DESC",
-            (project_id,),
-        ).fetchall()
+        if agent:
+            rows = conn.execute(
+                "SELECT * FROM tasks WHERE project_id=? AND agent=? AND status IN ('in_progress','blocked') ORDER BY updated_at DESC",
+                (project_id, agent),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM tasks WHERE project_id=? AND status IN ('in_progress','blocked') ORDER BY updated_at DESC",
+                (project_id,),
+            ).fetchall()
     return [_row_to_task(r) for r in rows]
 
 
@@ -235,6 +265,7 @@ def update_task(
     title: str | None = None,
     priority: str | None = None,
     tags: list[str] | None = None,
+    agent: str | None = None,
 ) -> dict | None:
     """更新任务字段（只更新非 None 字段）。"""
     _init_db()
@@ -250,6 +281,9 @@ def update_task(
     if tags is not None:
         updates.append("tags=?")
         params.append(",".join(tags))
+    if agent is not None:
+        updates.append("agent=?")
+        params.append(agent)
     if not updates:
         return get_task(task_id)
     updates.append("updated_at=?")
@@ -344,8 +378,8 @@ def sync_beads(project_id: str, project_path: str | Path = ".") -> dict:
                     tid = str(uuid.uuid4())
                     now = _now()
                     conn.execute(
-                        "INSERT INTO tasks (id, source, source_id, title, status, priority, project_id, tags, created_at, updated_at) "
-                        "VALUES (?, 'beads', ?, ?, ?, 'medium', ?, ?, ?, ?)",
+                        "INSERT INTO tasks (id, source, source_id, agent, title, status, priority, project_id, tags, created_at, updated_at) "
+                        "VALUES (?, 'beads', ?, '', ?, ?, 'medium', ?, ?, ?, ?)",
                         (tid, str(source_id), title, status or "todo", project_id,
                          ",".join(tags) if isinstance(tags, list) else None, now, now),
                     )
@@ -356,3 +390,14 @@ def sync_beads(project_id: str, project_path: str | Path = ".") -> dict:
 
         conn.commit()
     return {"synced": synced, "total": total}
+
+
+def list_agents_from_tasks(project_id: str = "default") -> list[str]:
+    """返回 tasks 表中所有不重复的 agent 名称。"""
+    _init_db()
+    with closing(_get_conn()) as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT agent FROM tasks WHERE project_id=? AND agent != '' ORDER BY agent",
+            (project_id,),
+        ).fetchall()
+    return [r["agent"] for r in rows]

@@ -345,6 +345,19 @@ export default function Agents() {
                       已选
                     </Tag>
                   )}
+                  {agent.installed && (
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.location.hash = `tasks?agent=${agent.name}`;
+                      }}
+                      style={{ color: COLORS.accent.blue, fontSize: 12, padding: 0 }}
+                    >
+                      查看任务
+                    </Button>
+                  )}
                 </Space>
               </div>
             );
@@ -391,7 +404,20 @@ export default function Agents() {
                   {agent.display_name}
                 </span>
               </Space>
-              <Space size={8}>{statusTag(agent.memory_status)}</Space>
+              <Space size={8}>
+                {statusTag(agent.memory_status)}
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.location.hash = `tasks?agent=${agent.name}`;
+                  }}
+                  style={{ color: COLORS.accent.blue, fontSize: 12, padding: 0 }}
+                >
+                  查看任务
+                </Button>
+              </Space>
             </div>
           ))}
         </div>
