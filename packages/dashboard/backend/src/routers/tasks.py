@@ -1,6 +1,6 @@
 """任务 API"""
 
-import os
+from pathlib import Path
 from pydantic import BaseModel
 from fastapi import APIRouter
 from starlette.responses import JSONResponse
@@ -100,7 +100,9 @@ def add_task_event(task_id: str, event_type: str, content: str):
 @router.post("/tasks/sync-beads")
 def sync_beads(project_id: str = "default"):
     try:
-        result = task_backend.sync_beads(project_id, project_path=os.getcwd())
+        # 项目根目录 = packages/dashboard/backend/src/routers/tasks.py 向上 6 层到项目根
+        root = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
+        result = task_backend.sync_beads(project_id, project_path=str(root))
         return result
     except Exception as e:
         return _make_error(500, f"同步失败: {str(e)}")
@@ -154,3 +156,13 @@ def seed_tasks():
         return {"seeded": count, "status": "ok"}
     except Exception as e:
         return _make_error(500, f"示例任务创建失败: {str(e)}")
+
+
+@router.post("/tasks/clean")
+def clean_agent_memory_tasks(project_id: str = "default"):
+    """删除所有 source=agent-memory 的任务（清理 seed/旧数据），仅保留 beads 同步数据。"""
+    try:
+        count = task_backend.clean_non_beads(project_id=project_id)
+        return {"deleted": count, "status": "ok"}
+    except Exception as e:
+        return _make_error(500, f"清理失败: {str(e)}")

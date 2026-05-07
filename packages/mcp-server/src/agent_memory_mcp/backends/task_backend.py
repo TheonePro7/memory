@@ -401,3 +401,23 @@ def list_agents_from_tasks(project_id: str = "default") -> list[str]:
             (project_id,),
         ).fetchall()
     return [r["agent"] for r in rows]
+
+
+def clean_non_beads(project_id: str = "default") -> int:
+    """删除所有 source != 'beads' 的任务，返回删除数量。"""
+    _init_db()
+    with closing(_get_conn()) as conn:
+        conn.execute(
+            "DELETE FROM task_events WHERE task_id IN (SELECT id FROM tasks WHERE project_id=? AND source != 'beads')",
+            (project_id,),
+        )
+        conn.execute(
+            "DELETE FROM task_artifacts WHERE task_id IN (SELECT id FROM tasks WHERE project_id=? AND source != 'beads')",
+            (project_id,),
+        )
+        cur = conn.execute(
+            "DELETE FROM tasks WHERE project_id=? AND source != 'beads'",
+            (project_id,),
+        )
+        conn.commit()
+    return cur.rowcount
