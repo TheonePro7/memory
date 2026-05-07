@@ -1,7 +1,5 @@
 import React, { useEffect, useState, lazy, Suspense } from "react";
-import { apiFetch } from "./api";
-import { getCache, setCache } from "./cache";
-import { ConfigProvider, Layout, Typography, Space, Button, Spin, message, Alert, Tooltip } from "antd";
+import { ConfigProvider, Layout, Typography, Space, Button, Spin, Alert, Tooltip } from "antd";
 import {
   BarChartOutlined,
   DatabaseOutlined,
@@ -18,6 +16,12 @@ const Agents = lazy(() => import("./pages/Agents"));
 const Timeline = lazy(() => import("./pages/Timeline"));
 const Tasks = lazy(() => import("./pages/Tasks"));
 const SettingsPage = lazy(() => import("./pages/Settings"));
+
+export interface Stats {
+  total_memories: number;
+  total_sessions: number;
+  recent_sessions: string[];
+}
 
 const { Header, Content } = Layout;
 
@@ -58,12 +62,6 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-export interface Stats {
-  total_memories: number;
-  total_sessions: number;
-  recent_sessions: string[];
-}
-
 interface NavItem {
   key: string;
   icon: React.ReactNode;
@@ -81,13 +79,6 @@ const navItems: NavItem[] = [
 
 function App() {
   const [online, setOnline] = useState(navigator.onLine);
-  const [stats, setStats] = useState<Stats>({
-    total_memories: 0,
-    total_sessions: 0,
-    recent_sessions: [],
-  });
-  const [statsLoading, setStatsLoading] = useState(true);
-
   const hashPage = location.hash.replace("#", "") || "overview";
   const [page, setPage] = useState(hashPage);
 
@@ -103,28 +94,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    setStatsLoading(true);
-    const cached = getCache<Stats>("/api/stats");
-    if (cached) {
-      setStats(cached);
-      setStatsLoading(false);
-      return;
-    }
-    apiFetch<Stats>("/api/stats")
-      .then((data) => {
-        setStats(data);
-        setCache("/api/stats", data);
-      })
-      .catch(() => message.error("统计数据加载失败"))
-      .finally(() => setStatsLoading(false));
-  }, []);
-
-  const navigate = (key: string) => {
-    setPage(key);
-    location.hash = key;
-  };
-
-  useEffect(() => {
     const onHashChange = () => {
       const p = location.hash.replace("#", "") || "overview";
       setPage(p);
@@ -133,8 +102,13 @@ function App() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
+  const navigate = (key: string) => {
+    setPage(key);
+    location.hash = key;
+  };
+
   const pages: Record<string, React.ReactNode> = {
-    overview: <Overview stats={stats} loading={statsLoading} />,
+    overview: <Overview />,
     memories: <Memories />,
     agents: <Agents />,
     timeline: <Timeline />,
@@ -277,7 +251,7 @@ function App() {
           )}
           <ErrorBoundary>
             <Suspense fallback={<div style={{ padding: 80, textAlign: "center" }}><Spin /></div>}>
-              {pages[page] || <Overview stats={stats} />}
+              {pages[page] || <Overview />}
             </Suspense>
           </ErrorBoundary>
         </Content>
