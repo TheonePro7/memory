@@ -4,16 +4,28 @@ import {
 } from "antd";
 import {
   ClockCircleOutlined, DownOutlined, UpOutlined,
-  DeleteOutlined, SearchOutlined, HistoryOutlined,
-  FileTextOutlined, CheckCircleOutlined,
+  DeleteOutlined, SearchOutlined,
+  FileTextOutlined, RobotOutlined, FolderOutlined,
 } from "@ant-design/icons";
 import { COLORS } from "../theme";
 import { apiFetch } from "../api";
 import { getCache, setCache, invalidateCache } from "../cache";
 
+interface SessionBlock {
+  title: string;
+  content: string;
+  agent: string;
+  project: string;
+  tags: string[];
+}
+
 interface Session {
   date: string;
   content: string;
+  sessions?: SessionBlock[];
+  session_count?: number;
+  tags?: string[];
+  sources?: string[];
   isSearch?: boolean;
 }
 
@@ -29,15 +41,12 @@ const dayOptions = [
   { value: 90, label: "最近 90 天" },
 ];
 
-/* 检查会话内容是否包含结构化标记 */
-function hasStructuredTags(content: string): string[] {
-  const tags: string[] = [];
-  if (content.includes("【任务】")) tags.push("任务");
-  if (content.includes("【决策】")) tags.push("决策");
-  if (content.includes("【配置】")) tags.push("配置");
-  if (content.includes("【总结】") || content.startsWith("#")) tags.push("总结");
-  return tags;
-}
+const tagMeta: Record<string, { label: string; color: string }> = {
+  task: { label: "任务", color: COLORS.accent.blue },
+  decision: { label: "决策", color: COLORS.accent.purple },
+  config: { label: "配置", color: COLORS.accent.orange },
+  summary: { label: "总结", color: COLORS.accent.green },
+};
 
 /* 搜索关键词高亮 */
 function highlightText(text: string, query: string): React.ReactNode {
@@ -163,9 +172,16 @@ export default function Timeline() {
     finally { setDetailLoading(false); }
   };
 
-  const displayItems = searchResults !== null
-    ? searchResults.map((r) => ({ date: r.date, content: r.matches?.join("\n") || "", isSearch: true }))
-    : sessions;
+  const displayItems: Session[] = useMemo(() => {
+    if (searchResults !== null) {
+      return searchResults.map((r) => ({
+        date: r.date,
+        content: r.matches?.join("\n") || "",
+        isSearch: true,
+      }));
+    }
+    return sessions;
+  }, [sessions, searchResults]);
 
   if (loading) return <Spin size="large" style={{ display: "block", margin: "80px auto" }} />;
 
@@ -181,7 +197,7 @@ export default function Timeline() {
         </Typography.Text>
       </div>
 
-      {/* ═══ 搜索框（突出） ═══ */}
+      {/* ═══ 搜索框 ═══ */}
       <Card
         size="small"
         style={{
@@ -256,7 +272,9 @@ export default function Timeline() {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {displayItems.map((item, i) => {
-            const tags = hasStructuredTags(item.content);
+            const tags = item.tags || [];
+            const sources = item.sources || [];
+            const sessionCount = item.session_count || 0;
             const displayContent = searchQuery
               ? getContext(item.content, searchQuery)
               : item.content.slice(0, expanded.has(i) ? undefined : 300);
@@ -274,8 +292,8 @@ export default function Timeline() {
               >
                 {/* 时间戳 */}
                 <div style={{
-                  minWidth: 130, display: "flex", alignItems: "flex-start", gap: 6,
-                  color: COLORS.text.secondary, fontSize: 13,
+                  minWidth: 120, display: "flex", alignItems: "flex-start", gap: 6,
+                  color: COLORS.text.secondary, fontSize: 13, flexShrink: 0,
                 }}>
                   <ClockCircleOutlined style={{ marginTop: 2, fontSize: 12, color: COLORS.text.tertiary }} />
                   <span>{item.date}</span>
@@ -283,31 +301,48 @@ export default function Timeline() {
 
                 {/* 内容 */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {/* 摘要标签 */}
-                  {tags.length > 0 && (
-                    <div style={{ marginBottom: 8, display: "flex", gap: 4 }}>
-                      {tags.map((tag) => (
+                  {/* 元信息行 */}
+                  <div style={{ marginBottom: 8, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                    {tags.map((tag) => {
+                      const meta = tagMeta[tag];
+                      return meta ? (
                         <Tag key={tag} style={{
                           fontSize: 10, lineHeight: "18px", padding: "0 6px", margin: 0,
-                          background: `${COLORS.accent.blue}20`, color: COLORS.accent.blue,
-                          border: `1px solid ${COLORS.accent.blue}30`,
+                          background: `${meta.color}20`, color: meta.color,
+                          border: `1px solid ${meta.color}30`,
                         }}>
-                          {tag}
+                          {meta.label}
                         </Tag>
-                      ))}
-                    </div>
-                  )}
+                      ) : null;
+                    })}
+                    {sources.map((src) => (
+                      <Tag key={src} icon={<RobotOutlined />} style={{
+                        fontSize: 10, lineHeight: "18px", padding: "0 6px", margin: 0,
+                        background: `${COLORS.accent.purple}15`, color: COLORS.accent.purple,
+                        border: `1px solid ${COLORS.accent.purple}25`,
+                      }}>
+                        {src}
+                      </Tag>
+                    ))}
+                    {sessionCount > 0 && !searchQuery && (
+                      <span style={{ fontSize: 11, color: COLORS.text.tertiary }}>
+                        {sessionCount} 条记录
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 内容正文 */}
                   <div
                     style={{
                       color: COLORS.text.secondary, fontSize: 13, lineHeight: 1.6,
                       whiteSpace: "pre-wrap",
                       maxHeight: expanded.has(i) ? "none" : 160,
                       overflow: expanded.has(i) ? "visible" : "hidden",
-                      flex: 1, cursor: "pointer",
+                      cursor: "pointer",
                     }}
                     onClick={() => toggleExpand(i)}
                   >
-                    {searchQuery && item.isSearch
+                    {searchQuery
                       ? highlightText(displayContent, searchQuery)
                       : displayContent}
                     <span style={{ fontSize: 11, color: COLORS.accent.blue, marginLeft: 8, userSelect: "none" }}>
@@ -320,7 +355,7 @@ export default function Timeline() {
                 </div>
 
                 {/* 操作按钮 */}
-                <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "flex-start" }}>
                   <Button
                     type="text" size="small"
                     icon={<FileTextOutlined style={{ fontSize: 13 }} />}

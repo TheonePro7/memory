@@ -33,12 +33,15 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 40, textAlign: "center", color: COLORS.text.secondary }}>
+        <div style={{ padding: 40, textAlign: "center", color: COLORS.text.secondary, background: COLORS.bg.page, minHeight: 300 }}>
           <Typography.Title level={4} style={{ color: COLORS.text.primary }}>
             页面渲染异常
           </Typography.Title>
-          <Typography.Paragraph style={{ color: COLORS.text.tertiary, fontSize: 13 }}>
+          <Typography.Paragraph style={{ color: COLORS.text.tertiary, fontSize: 13, marginBottom: 16 }}>
             {this.state.error?.message}
+          </Typography.Paragraph>
+          <Typography.Paragraph style={{ color: COLORS.text.tertiary, fontSize: 12 }}>
+            {this.state.error?.stack?.split("\n").slice(0, 5).join("\n")}
           </Typography.Paragraph>
           <Button
             onClick={() => {
