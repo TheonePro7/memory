@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Spin, Space, Empty, Button } from "antd";
+import { Typography, Spin, Space, Empty, Button, message } from "antd";
 import { ClockCircleOutlined, DownOutlined, UpOutlined } from "@ant-design/icons";
 import { COLORS } from "../theme";
 import { apiFetch } from "../api";
@@ -13,6 +13,7 @@ interface Session {
 export default function Timeline() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   const toggleExpand = (i: number) => {
@@ -24,7 +25,9 @@ export default function Timeline() {
     });
   };
 
-  useEffect(() => {
+  const loadSessions = () => {
+    setLoading(true);
+    setError(false);
     const cached = getCache<{ sessions: Session[] }>("/api/sessions?days=30");
     if (cached) {
       setSessions(cached.sessions || []);
@@ -36,9 +39,11 @@ export default function Timeline() {
         setSessions(data.sessions || []);
         setCache("/api/sessions?days=30", data);
       })
-      .catch(() => setSessions([]))
+      .catch(() => { setSessions([]); setError(true); message.error("时间线加载失败"); })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadSessions(); }, []);
 
   if (loading) return <Spin size="large" style={{ display: "block", margin: "80px auto" }} />;
 
@@ -52,10 +57,19 @@ export default function Timeline() {
       </Typography.Title>
 
       {sessions.length === 0 ? (
-        <Empty
-          description="暂无会话记录"
-          style={{ color: COLORS.text.tertiary }}
-        />
+        error ? (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <Typography.Text style={{ color: COLORS.text.tertiary, display: "block", marginBottom: 16 }}>
+              加载失败
+            </Typography.Text>
+            <Button onClick={loadSessions}>重新加载</Button>
+          </div>
+        ) : (
+          <Empty
+            description="暂无会话记录"
+            style={{ color: COLORS.text.tertiary }}
+          />
+        )
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {sessions.map((item, i) => (

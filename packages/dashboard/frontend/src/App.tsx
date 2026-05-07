@@ -1,7 +1,7 @@
 import React, { useEffect, useState, lazy, Suspense } from "react";
 import { apiFetch } from "./api";
 import { getCache, setCache } from "./cache";
-import { ConfigProvider, Layout, Typography, Space, Button, Spin } from "antd";
+import { ConfigProvider, Layout, Typography, Space, Button, Spin, message } from "antd";
 import {
   BarChartOutlined,
   DatabaseOutlined,
@@ -99,7 +99,7 @@ function App() {
         setStats(data);
         setCache("/api/stats", data);
       })
-      .catch(() => {})
+      .catch(() => message.error("统计数据加载失败"))
       .finally(() => setStatsLoading(false));
   }, []);
 
@@ -181,6 +181,7 @@ function App() {
               return (
                 <button
                   key={item.key}
+                  type="button"
                   onClick={() => navigate(item.key)}
                   style={{
                     display: "flex",

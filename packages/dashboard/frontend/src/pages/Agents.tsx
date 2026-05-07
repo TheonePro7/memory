@@ -27,6 +27,8 @@ export default function Agents() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [addModal, setAddModal] = useState(false);
+  const [managing, setManaging] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [newAgent, setNewAgent] = useState({
     name: "", type: "other", mcp_config_dir: "", project_dir: "",
   });
@@ -60,16 +62,19 @@ export default function Agents() {
   };
 
   const confirmManage = () => {
+    setManaging(true);
     fetch("/api/agents/manage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify([...selected]),
     })
       .then(() => message.success(`已确认管理 ${selected.size} 个 Agent`))
-      .catch(() => message.error("操作失败"));
+      .catch(() => message.error("操作失败"))
+      .finally(() => setManaging(false));
   };
 
   const addCustom = () => {
+    setAdding(true);
     fetch("/api/agents/custom", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -82,7 +87,8 @@ export default function Agents() {
         setNewAgent({ name: "", type: "other", mcp_config_dir: "", project_dir: "" });
         scan();
       })
-      .catch(() => message.error("添加失败"));
+      .catch(() => message.error("添加失败"))
+      .finally(() => setAdding(false));
   };
 
   const statusTag = (status: string) => {
@@ -166,7 +172,7 @@ export default function Agents() {
 
       {/* 统计卡片 */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={8}>
+        <Col xs={24} sm={12} lg={8}>
           <Card
             styles={{ body: { padding: "16px 20px" } }}
             style={{
@@ -198,7 +204,7 @@ export default function Agents() {
             </Space>
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={12} lg={8}>
           <Card
             styles={{ body: { padding: "16px 20px" } }}
             style={{
@@ -230,7 +236,7 @@ export default function Agents() {
             </Space>
           </Card>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={12} lg={8}>
           <Card
             styles={{ body: { padding: "16px 20px" } }}
             style={{
@@ -405,6 +411,7 @@ export default function Agents() {
             type="primary"
             size="large"
             onClick={confirmManage}
+            loading={managing}
             style={{ minWidth: 300, height: 44, fontSize: 15 }}
           >
             确认管理 {selected.size} 个 Agent

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { Typography, Table, Tag, Select, Card, Row, Col, Modal, Space, Tooltip, Button } from "antd";
+import { Typography, Table, Tag, Select, Card, Row, Col, Modal, Space, Tooltip, Button, message } from "antd";
 import {
   CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined,
   InboxOutlined, EyeOutlined,
@@ -58,7 +58,7 @@ export default function Tasks() {
         setTasks(data.tasks || []);
         setCache(url, data);
       })
-      .catch(() => setTasks([]))
+      .catch(() => { setTasks([]); message.error("任务列表加载失败"); })
       .finally(() => setLoading(false));
   };
 
@@ -78,7 +78,7 @@ export default function Tasks() {
         setTaskDetail(data);
         setCache(url, data);
       })
-      .catch(() => setTaskDetail(null))
+      .catch(() => { setTaskDetail(null); message.error("任务详情加载失败"); })
       .finally(() => setDetailLoading(false));
   };
 
@@ -256,6 +256,7 @@ export default function Tasks() {
           columns={columns}
           loading={loading}
           pagination={{ pageSize: 20, size: "small" }}
+          locale={{ emptyText: <span style={{ color: "#52525b" }}>暂无任务数据</span> }}
           rowKey="id"
           size="middle"
         />

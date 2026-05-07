@@ -55,12 +55,15 @@ export default function Memories() {
         });
         setProjects((prev) => [...new Set([...prev, ...pids])].sort());
       })
-      .catch(() => setMemories([]))
+      .catch(() => { setMemories([]); message.error("记忆搜索失败"); })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     search("", projectFilter, agentFilter);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -69,7 +72,7 @@ export default function Memories() {
     fetch("/api/agents").then(r => r.json()).then(data => {
       const agents = (data.agents || []).map((a: any) => a.name);
       setAgentOptions(agents);
-    }).catch(() => {});
+    }).catch(() => message.error("Agent 列表加载失败"));
   }, []);
 
   const handleProjectChange = (value: string | null) => {
@@ -86,6 +89,7 @@ export default function Memories() {
 
   const [editModal, setEditModal] = useState<{ visible: boolean; memory: Memory | null }>({ visible: false, memory: null });
   const [editContent, setEditContent] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const handleDelete = (memory: Memory) => {
     Modal.confirm({
@@ -95,9 +99,16 @@ export default function Memories() {
       styles: { body: { background: COLORS.bg.card } },
       onOk: async () => {
         if (!(await checkQuota())) return;
-        const res = await fetch(`/api/memories/${memory.id}`, { method: "DELETE" });
-        if (res.status === 403 || res.status === 404) return;
-        setQuota(await fetch("/api/quota").then(r => r.json()));
+        try {
+          const res = await fetch(`/api/memories/${memory.id}`, { method: "DELETE" });
+          if (res.status === 403) { message.error("无权限删除"); return; }
+          if (res.status === 404) { message.error("记忆不存在或已被删除"); return; }
+          if (!res.ok) return;
+        } catch {
+          message.error("网络错误，删除失败");
+          return;
+        }
+        setQuota(await fetch("/api/quota").then(r => r.json()).catch(() => ({ used: 0, total: 100, remaining: 100, bonus: 0 })));
         message.success("记忆已删除");
         search(query, projectFilter, agentFilter);
       },
@@ -396,20 +407,31 @@ export default function Memories() {
         onOk={async () => {
           if (!editModal.memory?.id) return;
           if (!(await checkQuota())) return;
-          const res = await fetch(`/api/memories/${editModal.memory.id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: editContent }),
-          });
-          if (res.status === 403 || res.status === 404) return;
-          setQuota(await fetch("/api/quota").then(r => r.json()));
+          setSaving(true);
+          try {
+            const res = await fetch(`/api/memories/${editModal.memory.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ content: editContent }),
+            });
+            if (res.status === 403) { message.error("无权限编辑"); setSaving(false); return; }
+            if (res.status === 404) { message.error("记忆不存在或已被删除"); setSaving(false); return; }
+            if (!res.ok) { setSaving(false); return; }
+          } catch {
+            message.error("网络错误，编辑失败");
+            setSaving(false);
+            return;
+          }
+          setQuota(await fetch("/api/quota").then(r => r.json()).catch(() => ({ used: 0, total: 100, remaining: 100, bonus: 0 })));
           setEditModal({ visible: false, memory: null });
           message.success("记忆已更新");
           search(query, projectFilter, agentFilter);
+          setSaving(false);
         }}
-        onCancel={() => setEditModal({ visible: false, memory: null })}
+        onCancel={() => { setEditModal({ visible: false, memory: null }); setSaving(false); }}
         okText="保存"
         cancelText="取消"
+        okButtonProps={{ loading: saving }}
         styles={{ body: { background: COLORS.bg.card } }}
       >
         <Input.TextArea
