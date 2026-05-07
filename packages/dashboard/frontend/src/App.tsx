@@ -210,6 +210,7 @@ function App() {
                     cursor: "pointer",
                     transition: "all 0.15s ease",
                     fontFamily: "inherit",
+                    position: "relative",
                   }}
                   onMouseEnter={(e) => {
                     if (!active) e.currentTarget.style.background = COLORS.bg.elevated;
@@ -220,6 +221,17 @@ function App() {
                 >
                   {item.icon}
                   {item.label}
+                  {active && (
+                    <div style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: "30%",
+                      right: "30%",
+                      height: 2,
+                      borderRadius: 1,
+                      background: COLORS.accent.blue,
+                    }} />
+                  )}
                 </button>
               );
             })}
@@ -241,6 +253,8 @@ function App() {
 
         {/* 页面内容 */}
         <Content
+          key={page}
+          className="page-enter"
           style={{
             padding: "28px 16px",
             maxWidth: 1200,
@@ -264,6 +278,19 @@ function App() {
             </Suspense>
           </ErrorBoundary>
         </Content>
+
+        {/* 底部信息 */}
+        <div
+          style={{
+            textAlign: "center",
+            padding: "16px 16px 24px",
+            color: COLORS.text.tertiary,
+            fontSize: 11,
+            borderTop: `1px solid ${COLORS.border.default}`,
+          }}
+        >
+          Agent Memory Dashboard v0.6
+        </div>
       </Layout>
     </ConfigProvider>
   );

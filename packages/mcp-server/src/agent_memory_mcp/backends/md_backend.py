@@ -38,6 +38,16 @@ def get_recent(days: int = 7) -> list[dict]:
     return results
 
 
+def delete_session(date: str) -> bool:
+    """删除指定日期的会话文件。"""
+    memory_dir = _get_memory_dir()
+    path = memory_dir / f"{date}.md"
+    if path.exists():
+        path.unlink()
+        return True
+    return False
+
+
 def grep(query: str, days: int = 30) -> list[dict]:
     memory_dir = _get_memory_dir()
     results = []

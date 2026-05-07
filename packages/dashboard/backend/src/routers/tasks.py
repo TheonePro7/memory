@@ -1,12 +1,24 @@
 """任务 API"""
 
 import os
-
+from pydantic import BaseModel
 from fastapi import APIRouter
 from starlette.responses import JSONResponse
 from backends import task_backend
 
 router = APIRouter(tags=["tasks"])
+
+
+class TaskCreate(BaseModel):
+    title: str
+    project_id: str = "default"
+    priority: str = "medium"
+
+
+class TaskUpdate(BaseModel):
+    title: str | None = None
+    priority: str | None = None
+    tags: list[str] | None = None
 
 
 def _make_error(status: int, message: str) -> JSONResponse:
@@ -43,9 +55,9 @@ def get_task(task_id: str):
 
 
 @router.post("/tasks")
-def create_task(title: str, project_id: str = "default", priority: str = "medium"):
+def create_task(body: TaskCreate):
     try:
-        t = task_backend.create_task(title=title, project_id=project_id, priority=priority)
+        t = task_backend.create_task(title=body.title, project_id=body.project_id, priority=body.priority)
         return t
     except Exception as e:
         return _make_error(500, f"任务创建失败: {str(e)}")
@@ -80,3 +92,52 @@ def sync_beads(project_id: str = "default"):
         return result
     except Exception as e:
         return _make_error(500, f"同步失败: {str(e)}")
+
+
+@router.delete("/tasks/{task_id}")
+def delete_task(task_id: str):
+    try:
+        ok = task_backend.delete_task(task_id)
+        if not ok:
+            return _make_error(404, "任务不存在")
+        return {"status": "deleted", "id": task_id}
+    except Exception as e:
+        return _make_error(500, f"任务删除失败: {str(e)}")
+
+
+@router.put("/tasks/{task_id}")
+def update_task(task_id: str, update: TaskUpdate):
+    try:
+        t = task_backend.update_task(
+            task_id,
+            title=update.title,
+            priority=update.priority,
+            tags=update.tags,
+        )
+        if not t:
+            return _make_error(404, "任务不存在")
+        return t
+    except Exception as e:
+        return _make_error(500, f"任务更新失败: {str(e)}")
+
+
+@router.post("/tasks/seed")
+def seed_tasks():
+    """创建一组示例任务。"""
+    try:
+        samples = [
+            ("搭建 CLI 项目骨架", "medium", "todo"),
+            ("设计记忆存储接口", "medium", "in_progress"),
+            ("实现 MCP 服务端集成", "high", "done"),
+            ("编写单元测试覆盖", "medium", "done"),
+            ("优化搜索性能", "low", "todo"),
+        ]
+        count = 0
+        for title, priority, status in samples:
+            t = task_backend.create_task(title=title, priority=priority)
+            if status != "todo":
+                task_backend.update_status(t["id"], status)
+            count += 1
+        return {"seeded": count, "status": "ok"}
+    except Exception as e:
+        return _make_error(500, f"示例任务创建失败: {str(e)}")

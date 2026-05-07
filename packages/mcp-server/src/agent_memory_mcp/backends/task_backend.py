@@ -208,6 +208,62 @@ def get_active_tasks(project_id: str = "default") -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def delete_task(task_id: str) -> bool:
+    """删除任务及其关联的事件和产出物。返回是否删除成功。"""
+    _init_db()
+    with closing(_get_conn()) as conn:
+        cur = conn.execute("SELECT id FROM tasks WHERE id=?", (task_id,))
+        if not cur.fetchone():
+            return False
+        conn.execute("DELETE FROM task_events WHERE task_id=?", (task_id,))
+        conn.execute("DELETE FROM task_artifacts WHERE task_id=?", (task_id,))
+        conn.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+        conn.commit()
+    return True
+
+
+def update_task(
+    task_id: str,
+    title: str | None = None,
+    priority: str | None = None,
+    tags: list[str] | None = None,
+) -> dict | None:
+    """更新任务字段（只更新非 None 字段）。"""
+    _init_db()
+    now = _now()
+    updates: list[str] = []
+    params: list = []
+    if title is not None:
+        updates.append("title=?")
+        params.append(title)
+    if priority is not None:
+        updates.append("priority=?")
+        params.append(priority)
+    if tags is not None:
+        updates.append("tags=?")
+        params.append(",".join(tags))
+    if not updates:
+        return get_task(task_id)
+    updates.append("updated_at=?")
+    params.append(now)
+    params.append(task_id)
+    with closing(_get_conn()) as conn:
+        old = conn.execute("SELECT title FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if not old:
+            return None
+        conn.execute(
+            f"UPDATE tasks SET {', '.join(updates)} WHERE id=?",
+            params,
+        )
+        if title is not None and title != old["title"]:
+            conn.execute(
+                "INSERT INTO task_events (task_id, type, content, created_at) VALUES (?, 'title_change', ?, ?)",
+                (task_id, f"'{old['title']}' → '{title}'", now),
+            )
+        conn.commit()
+    return get_task(task_id)
+
+
 # ── beads 同步 ─────────────────────────────────────
 
 STATUS_MAP = {
