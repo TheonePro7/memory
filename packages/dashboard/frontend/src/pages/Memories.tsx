@@ -203,10 +203,13 @@ export default function Memories() {
         const sid = r.metadata?.session_id;
         if (!sid) return <span style={{ color: COLORS.text.tertiary, fontSize: 12 }}>--</span>;
         return (
-          <Tag style={{
-            fontSize: 11, color: COLORS.accent.blue, background: `${COLORS.accent.blue}10`,
-            border: `1px solid ${COLORS.accent.blue}20`,
-          }}>
+          <Tag
+            style={{
+              fontSize: 11, color: COLORS.accent.blue, background: `${COLORS.accent.blue}10`,
+              border: `1px solid ${COLORS.accent.blue}20`, cursor: "pointer",
+            }}
+            onClick={() => { location.hash = `timeline`; }}
+          >
             {sid}
           </Tag>
         );

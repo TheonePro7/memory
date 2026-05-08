@@ -928,7 +928,18 @@ export default function Tasks() {
                             if ((m.memory || "").length > 120) {
                               Modal.info({
                                 title: "关联记忆",
-                                content: <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 13, maxHeight: 400, overflow: "auto", color: COLORS.text.secondary }}>{m.memory}</pre>,
+                                content: <div>
+                                  <div style={{ marginBottom: 8, display: "flex", gap: 8, alignItems: "center" }}>
+                                    <Tag style={{ fontSize: 11, margin: 0 }}>{relLabel[rel] || rel}</Tag>
+                                    <span
+                                      onClick={() => { location.hash = `timeline`; Modal.destroyAll(); }}
+                                      style={{ fontSize: 12, color: COLORS.accent.blue, cursor: "pointer" }}
+                                    >
+                                      查看会话 →
+                                    </span>
+                                  </div>
+                                  <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 13, maxHeight: 400, overflow: "auto", color: COLORS.text.secondary }}>{m.memory}</pre>
+                                </div>,
                                 width: 560,
                                 styles: { body: { background: COLORS.bg.card } },
                               });
