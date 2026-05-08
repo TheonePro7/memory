@@ -62,18 +62,26 @@ function useFetch<T>(url: string | null) {
   useEffect(() => {
     if (url === null) { setLoading(false); return; }
     let cancel = false;
-    setLoading(true);
-    setError(null);
-    const cached = getCache<T>(url);
-    if (cached) {
-      setData(cached);
-      setLoading(false);
-      return;
-    }
-    apiFetch<T>(url)
-      .then((d) => { if (!cancel) { setData(d); setCache(url, d); } })
-      .catch((e) => { if (!cancel) setError(e.message || "加载失败"); })
-      .finally(() => { if (!cancel) setLoading(false); });
+    let retries = 0;
+    const fetchWithRetry = () => {
+      setLoading(true);
+      setError(null);
+      const cached = getCache<T>(url);
+      if (cached) {
+        setData(cached);
+        setLoading(false);
+        return;
+      }
+      apiFetch<T>(url)
+        .then((d) => { if (!cancel) { setData(d); setCache(url, d); } })
+        .catch((e) => {
+          if (cancel) return;
+          if (retries < 1) { retries++; setTimeout(fetchWithRetry, 1500); return; }
+          setError(e.message || "加载失败");
+        })
+        .finally(() => { if (!cancel) setLoading(false); });
+    };
+    fetchWithRetry();
     return () => { cancel = true; };
   }, [url]);
 

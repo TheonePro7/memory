@@ -31,6 +31,8 @@ def _make_error(status: int, message: str) -> JSONResponse:
 def list_tasks(project_id: str = "default", status: str | None = None, agent: str | None = None):
     try:
         tasks = task_backend.list_tasks(project_id=project_id, status=status, agent=agent)
+        # 过滤掉 devflow 内部 state 任务，不展示给用户
+        tasks = [t for t in tasks if not t["title"].startswith("state:")]
         return {"tasks": tasks, "total": len(tasks)}
     except Exception as e:
         return _make_error(500, f"任务列表加载失败: {str(e)}")
