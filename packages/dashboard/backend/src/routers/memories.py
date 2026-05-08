@@ -96,6 +96,20 @@ def get_memories_by_session(date: str, project_id: str | None = None, limit: int
     return {"results": filtered, "total": len(filtered)}
 
 
+@router.get("/memories/by-ids")
+def get_memories_by_ids(ids: str = ""):
+    """批量按 memory_id 查询记忆内容。ids 用逗号分隔。"""
+    if not ids.strip():
+        return {"results": [], "total": 0}
+    id_list = [i.strip() for i in ids.split(",") if i.strip()]
+    if not id_list:
+        return {"results": [], "total": 0}
+    all_mems = mem0_backend.list_all(limit=2000)
+    id_set = set(id_list)
+    matched = [m for m in all_mems if m.get("id") in id_set]
+    return {"results": matched, "total": len(matched)}
+
+
 @router.delete("/memories/{memory_id}")
 def delete_memory(memory_id: str):
     """删除记忆。自动校验配额并计数。"""

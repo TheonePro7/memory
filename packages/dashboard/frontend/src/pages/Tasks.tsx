@@ -379,15 +379,13 @@ export default function Tasks() {
       .then((data) => {
         setTaskDetail(data);
         setCache(url, data);
-        // 有关联记忆时，拉取所有记忆并匹配
+        // 有关联记忆时，批量拉取记忆内容
         if (data.linked_memories && data.linked_memories.length > 0) {
           setMemoriesLoading(true);
-          apiFetch<{ results: Record<string, string>[] }>("/api/memories?limit=200")
+          const ids = data.linked_memories.map((lm) => lm.memory_id).join(",");
+          apiFetch<{ results: Record<string, string>[] }>(`/api/memories/by-ids?ids=${encodeURIComponent(ids)}`)
             .then((memData) => {
-              const matched = (memData.results || []).filter((m) =>
-                data.linked_memories!.some((lm) => lm.memory_id === m.id)
-              );
-              setLinkedMemories(matched);
+              setLinkedMemories(memData.results || []);
             })
             .catch(() => setLinkedMemories([]))
             .finally(() => setMemoriesLoading(false));
