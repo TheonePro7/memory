@@ -1,11 +1,14 @@
 """记忆 CRUD API"""
 
+import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from backends import mem0_backend
 from agent_memory_mcp.backends import quota
 from agent_memory_mcp.core import get_adapters
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["memories"])
 
@@ -66,8 +69,8 @@ def list_memories(q: str = "", project_id: str | None = None, agent: str | None 
             try:
                 adapter_results = adapter.list_all(limit=limit)
                 results.extend(adapter_results)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Adapter %s 查询失败: %s", type(adapter).__name__, exc)
     if agent and results:
         results = [r for r in results if r.get("metadata", {}).get("agent") == agent]
     return {"results": results, "total": len(results)}

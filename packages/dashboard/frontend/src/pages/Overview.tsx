@@ -12,7 +12,7 @@ import {
   ClockCircleOutlined,
 } from "@ant-design/icons";
 import { apiFetch } from "../api";
-import { getCache, setCache } from "../cache";
+import { getCache, setCache, invalidateCache } from "../cache";
 import { COLORS } from "../theme";
 
 /* ── 类型定义 ──────────────────────── */
@@ -58,6 +58,20 @@ function useFetch<T>(url: string | null) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  /* 唯一 ID —— hash 变化时重新加载 */
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const onHash = () => {
+      if (location.hash.replace("#", "").startsWith("overview")) {
+        invalidateCache(url || undefined);
+        setRefreshKey((k) => k + 1);
+      }
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, [url]);
+
   useEffect(() => {
     if (url === null) { setLoading(false); return; }
     let cancel = false;
@@ -82,7 +96,8 @@ function useFetch<T>(url: string | null) {
     };
     fetchWithRetry();
     return () => { cancel = true; };
-  }, [url]);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [url, refreshKey]);
 
   return { data, loading, error };
 }
