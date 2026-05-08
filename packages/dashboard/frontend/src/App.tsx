@@ -134,8 +134,8 @@ function App() {
             gap: 12,
           }}
         >
-          {/* Logo + 品牌 */}
-          <Space size={12}>
+          {/* Logo + 品牌 — 点击回到首页 */}
+          <Space size={12} style={{ cursor: "pointer" }} onClick={() => navigate("overview")}>
             <div
               style={{
                 width: 28,
@@ -215,7 +215,24 @@ function App() {
           </nav>
 
           {/* 右侧操作 */}
-          <Space size={8} style={{ width: 120, justifyContent: "flex-end" }}>
+          <Space size={8} style={{ width: 140, justifyContent: "flex-end" }}>
+            <Tooltip title={online ? `后端已连接` : "后端离线"}>
+              <span
+                onClick={() => window.location.reload()}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  fontSize: 11, color: COLORS.text.tertiary,
+                  cursor: "pointer", userSelect: "none",
+                }}
+              >
+                <span style={{
+                  width: 7, height: 7, borderRadius: "50%",
+                  background: online ? COLORS.accent.green : COLORS.accent.red,
+                  display: "inline-block",
+                }} />
+                {online ? "已连接" : "离线"}
+              </span>
+            </Tooltip>
             <Tooltip title="刷新当前页面">
               <Button
                 type="text"
