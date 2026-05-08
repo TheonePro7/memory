@@ -87,6 +87,13 @@ export default function Timeline() {
   const [detailDate, setDetailDate] = useState<string | null>(null);
   const [detailContent, setDetailContent] = useState("");
   const [detailLoading, setDetailLoading] = useState(false);
+  const [sessionMemories, setSessionMemories] = useState<MemorySimple[]>([]);
+
+  interface MemorySimple {
+    id: string;
+    memory: string;
+    metadata?: Record<string, string>;
+  }
 
   const toggleExpand = (i: number) => {
     setExpanded((prev) => {
@@ -165,9 +172,14 @@ export default function Timeline() {
   const handleViewDetail = async (date: string) => {
     setDetailDate(date);
     setDetailLoading(true);
+    setSessionMemories([]);
     try {
-      const data = await apiFetch<{ content: string }>(`/api/sessions/${date}`);
-      setDetailContent(data.content || "");
+      const [sessionData, memoriesData] = await Promise.all([
+        apiFetch<{ content: string }>(`/api/sessions/${date}`),
+        apiFetch<{ results: MemorySimple[] }>(`/api/memories/by-session/${date}`),
+      ]);
+      setDetailContent(sessionData.content || "");
+      setSessionMemories(memoriesData.results || []);
     } catch { message.error("加载失败"); }
     finally { setDetailLoading(false); }
   };
@@ -380,7 +392,7 @@ export default function Timeline() {
       <Modal
         title={<span style={{ color: COLORS.text.primary }}>{detailDate}</span>}
         open={!!detailDate}
-        onCancel={() => { setDetailDate(null); setDetailContent(""); }}
+        onCancel={() => { setDetailDate(null); setDetailContent(""); setSessionMemories([]); }}
         footer={null}
         width={700}
         styles={{ body: { background: COLORS.bg.card, maxHeight: 500, overflowY: "auto" } }}
@@ -388,12 +400,42 @@ export default function Timeline() {
         {detailLoading ? (
           <div style={{ padding: 32, textAlign: "center" }}><Spin /></div>
         ) : (
-          <pre style={{
-            color: COLORS.text.secondary, fontSize: 13, lineHeight: 1.6,
-            whiteSpace: "pre-wrap", fontFamily: "inherit", margin: 0,
-          }}>
-            {detailContent || "无内容"}
-          </pre>
+          <>
+            <pre style={{
+              color: COLORS.text.secondary, fontSize: 13, lineHeight: 1.6,
+              whiteSpace: "pre-wrap", fontFamily: "inherit", margin: 0,
+            }}>
+              {detailContent || "无内容"}
+            </pre>
+
+            {sessionMemories.length > 0 && (
+              <div style={{ marginTop: 20 }}>
+                <Typography.Text style={{
+                  fontSize: 13, color: COLORS.text.secondary, fontWeight: 500,
+                  display: "block", marginBottom: 10,
+                }}>
+                  关联记忆 ({sessionMemories.length})
+                </Typography.Text>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {sessionMemories.map((m) => (
+                    <div key={m.id} style={{
+                      padding: "10px 12px", borderRadius: 6,
+                      background: COLORS.bg.elevated, border: `1px solid ${COLORS.border.default}`,
+                    }}>
+                      {m.metadata?.agent && (
+                        <Tag style={{ fontSize: 10, lineHeight: "16px", marginBottom: 6, padding: "0 4px" }}>
+                          {m.metadata.agent}
+                        </Tag>
+                      )}
+                      <div style={{ color: COLORS.text.secondary, fontSize: 12.5, lineHeight: 1.5 }}>
+                        {m.memory?.slice(0, 200)}{(m.memory?.length || 0) > 200 ? "..." : ""}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </Modal>
     </div>

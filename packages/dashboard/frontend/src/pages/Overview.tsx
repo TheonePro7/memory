@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Row, Col, Typography, Space, Skeleton, Tag, Empty, Divider, Button } from "antd";
+import { Card, Row, Col, Typography, Space, Skeleton, Tag, Empty, Divider, Button, Tooltip } from "antd";
 import {
   DatabaseOutlined,
   MessageOutlined,
@@ -75,14 +75,17 @@ function useFetch<T>(url: string | null) {
 
 /* ── 子模块 ────────────────────────── */
 
-function ActiveAgents({ agents }: { agents: AgentsData | null }) {
-  const all = [
-    ...(agents?.builtin || []),
-    ...(agents?.custom || []),
-    ...(agents?.detected || []),
-  ].filter((a) => a.installed);
+interface AgentStatsGridProps {
+  agents: AgentItem[];
+  tasks: TaskItem[];
+  taskCounts: Record<string, number>;
+  memoryCounts: Record<string, number>;
+  sessionCounts: Record<string, number>;
+  memoriesLoading: boolean;
+}
 
-  if (all.length === 0) {
+function AgentStatsGrid({ agents, tasks, taskCounts, memoryCounts, sessionCounts, memoriesLoading }: AgentStatsGridProps) {
+  if (agents.length === 0) {
     return (
       <Empty
         image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -93,32 +96,54 @@ function ActiveAgents({ agents }: { agents: AgentsData | null }) {
 
   return (
     <Row gutter={[12, 12]}>
-      {all.slice(0, 8).map((a) => (
-        <Col xs={12} sm={8} md={6} key={a.name}>
-          <Card
-            size="small"
-            hoverable
-            onClick={() => navigateTo(`agents`)}
-            styles={{ body: { padding: "12px 14px" } }}
-            style={{ background: COLORS.bg.card, borderColor: COLORS.border.default }}
-          >
-            <Space size={8}>
-              <RobotOutlined style={{ color: COLORS.accent.blue, fontSize: 16 }} />
-              <div style={{ minWidth: 0 }}>
-                <Typography.Text
-                  style={{ color: COLORS.text.primary, fontSize: 13, display: "block", fontWeight: 500 }}
-                  ellipsis
-                >
-                  {a.display_name || a.name}
-                </Typography.Text>
-                <Typography.Text style={{ color: COLORS.text.tertiary, fontSize: 11 }}>
-                  {a.category || "agent"}
-                </Typography.Text>
+      {agents.slice(0, 8).map((a) => {
+        const taskCount = taskCounts[a.name] || 0;
+        const memCount = memoryCounts[a.name] || 0;
+        const sessCount = sessionCounts[a.name] || 0;
+        return (
+          <Col xs={24} sm={12} md={8} key={a.name}>
+            <Card
+              size="small"
+              hoverable
+              onClick={() => navigateTo(`agents`)}
+              styles={{ body: { padding: "14px 16px" } }}
+              style={{ background: COLORS.bg.card, borderColor: COLORS.border.default, height: "100%" }}
+            >
+              <Space size={10} style={{ marginBottom: 10 }}>
+                <RobotOutlined style={{ color: COLORS.accent.blue, fontSize: 18 }} />
+                <div style={{ minWidth: 0 }}>
+                  <Typography.Text style={{ color: COLORS.text.primary, fontSize: 13.5, display: "block", fontWeight: 500 }} ellipsis>
+                    {a.display_name || a.name}
+                  </Typography.Text>
+                  <Typography.Text style={{ color: COLORS.text.tertiary, fontSize: 11 }}>
+                    {a.category || "agent"}
+                  </Typography.Text>
+                </div>
+              </Space>
+              <div style={{ display: "flex", gap: 12 }}>
+                <Tooltip title="任务">
+                  <div style={{ textAlign: "center", flex: 1, background: COLORS.bg.elevated, borderRadius: 6, padding: "6px 0" }}>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.accent.orange }}>{taskCount}</div>
+                    <div style={{ fontSize: 10, color: COLORS.text.tertiary }}>任务</div>
+                  </div>
+                </Tooltip>
+                <Tooltip title="记忆">
+                  <div style={{ textAlign: "center", flex: 1, background: COLORS.bg.elevated, borderRadius: 6, padding: "6px 0" }}>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.accent.blue }}>{memCount}{memoriesLoading ? "…" : ""}</div>
+                    <div style={{ fontSize: 10, color: COLORS.text.tertiary }}>记忆</div>
+                  </div>
+                </Tooltip>
+                <Tooltip title="会话">
+                  <div style={{ textAlign: "center", flex: 1, background: COLORS.bg.elevated, borderRadius: 6, padding: "6px 0" }}>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: COLORS.accent.green }}>{sessCount}</div>
+                    <div style={{ fontSize: 10, color: COLORS.text.tertiary }}>会话</div>
+                  </div>
+                </Tooltip>
               </div>
-            </Space>
-          </Card>
-        </Col>
-      ))}
+            </Card>
+          </Col>
+        );
+      })}
     </Row>
   );
 }
@@ -414,12 +439,40 @@ export default function Overview() {
   const { data: agentsData, loading: agentsLoading, error: agentsError } = useFetch<AgentsData>("/api/agents/scan");
   const { data: sessionsData, loading: sessionsLoading, error: sessionsError } = useFetch<{ sessions: SessionItem[] }>("/api/sessions?days=7");
   const { data: tasksData, loading: tasksLoading, error: tasksError } = useFetch<{ tasks: TaskItem[] }>("/api/tasks?status=todo&status=in_progress");
+  const { data: memoriesData, loading: memoriesLoading } = useFetch<{ results: { metadata?: Record<string, string> }[] }>("/api/memories?q=&limit=200");
 
   const allInstalled = [
     ...(agentsData?.builtin || []),
     ...(agentsData?.custom || []),
     ...(agentsData?.detected || []),
   ].filter((a) => a.installed);
+
+  /* 按 Agent 统计 */
+  const agentTaskCounts: Record<string, number> = {};
+  const agentMemoryCounts: Record<string, number> = {};
+  const agentSessionCounts: Record<string, number> = {};
+  const agentSessions = sessionsData?.sessions || [];
+  const agentTasks = tasksData?.tasks || [];
+  const agentMemories = memoriesData?.results || [];
+
+  for (const t of agentTasks) {
+    const a = t.agent || "__unassigned";
+    agentTaskCounts[a] = (agentTaskCounts[a] || 0) + 1;
+  }
+  for (const m of agentMemories) {
+    const a = m.metadata?.agent || "__unassigned";
+    agentMemoryCounts[a] = (agentMemoryCounts[a] || 0) + 1;
+  }
+  for (const s of agentSessions) {
+    const sources = (s as any).sources || [];
+    if (sources.length === 0) {
+      agentSessionCounts["__unassigned"] = (agentSessionCounts["__unassigned"] || 0) + 1;
+    } else {
+      for (const src of sources) {
+        agentSessionCounts[src] = (agentSessionCounts[src] || 0) + 1;
+      }
+    }
+  }
 
   return (
     <div>
@@ -436,9 +489,16 @@ export default function Overview() {
         <QuickActions />
       </SectionCard>
 
-      {/* 活跃 Agent */}
+      {/* 活跃 Agent — 带统计 */}
       <SectionCard title="活跃 Agent" loading={agentsLoading} error={agentsError}>
-        <ActiveAgents agents={agentsData} />
+        <AgentStatsGrid
+          agents={allInstalled}
+          tasks={agentTasks}
+          taskCounts={agentTaskCounts}
+          memoryCounts={agentMemoryCounts}
+          sessionCounts={agentSessionCounts}
+          memoriesLoading={memoriesLoading}
+        />
       </SectionCard>
 
       {/* 最近会话 */}

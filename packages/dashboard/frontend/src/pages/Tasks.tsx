@@ -13,6 +13,14 @@ import { COLORS } from "../theme";
 import { apiFetch } from "../api";
 import { getCache, setCache, invalidateCache } from "../cache";
 
+interface LinkedMemoryRef {
+  id: number;
+  task_id: string;
+  memory_id: string;
+  relationship: string;
+  created_at: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -23,6 +31,7 @@ interface Task {
   tags: string[];
   events?: { type: string; content: string; created_at: string }[];
   artifacts?: { kind: string; reference: string }[];
+  linked_memories?: LinkedMemoryRef[];
   created_at: string;
   updated_at?: string;
 }
@@ -284,6 +293,10 @@ export default function Tasks() {
   const [blockerNote, setBlockerNote] = useState("");
   const [blockerSaving, setBlockerSaving] = useState(false);
 
+  // 关联记忆
+  const [linkedMemories, setLinkedMemories] = useState<Record<string, string>[]>([]);
+  const [memoriesLoading, setMemoriesLoading] = useState(false);
+
   /* ── URL 参数同步 ── */
   const syncAgentParam = (agent: string | undefined) => {
     const url = new URL(window.location.href);
@@ -352,6 +365,21 @@ export default function Tasks() {
       .then((data) => {
         setTaskDetail(data);
         setCache(url, data);
+        // 有关联记忆时，拉取所有记忆并匹配
+        if (data.linked_memories && data.linked_memories.length > 0) {
+          setMemoriesLoading(true);
+          apiFetch<{ results: Record<string, string>[] }>("/api/memories?limit=200")
+            .then((memData) => {
+              const matched = (memData.results || []).filter((m) =>
+                data.linked_memories!.some((lm) => lm.memory_id === m.id)
+              );
+              setLinkedMemories(matched);
+            })
+            .catch(() => setLinkedMemories([]))
+            .finally(() => setMemoriesLoading(false));
+        } else {
+          setLinkedMemories([]);
+        }
       })
       .catch(() => { setTaskDetail(null); message.error("任务详情加载失败"); })
       .finally(() => setDetailLoading(false));
@@ -797,7 +825,7 @@ export default function Tasks() {
       <Modal
         title={<span style={{ color: COLORS.text.primary }}>{selectedTask?.title}</span>}
         open={!!selectedTask}
-        onCancel={() => { setSelectedTask(null); setTaskDetail(null); }}
+        onCancel={() => { setSelectedTask(null); setTaskDetail(null); setLinkedMemories([]); }}
         footer={null}
         width={600}
         styles={{ body: { background: COLORS.bg.card } }}
@@ -862,6 +890,36 @@ export default function Tasks() {
                     {taskDetail.artifacts.map((a, i) => (
                       <Tag key={i} color="green" style={{ fontSize: 12 }}>{a.kind}: {a.reference}</Tag>
                     ))}
+                  </Space>
+                </div>
+              )}
+              {/* 关联记忆 */}
+              {memoriesLoading ? (
+                <div style={{ padding: 16, textAlign: "center" }}><Spin size="small" /></div>
+              ) : linkedMemories.length > 0 && (
+                <div>
+                  <Typography.Text style={{ fontSize: 13, color: COLORS.text.secondary, fontWeight: 500, display: "block", marginBottom: 8 }}>
+                    关联记忆 ({linkedMemories.length})
+                  </Typography.Text>
+                  <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                    {linkedMemories.map((m, i) => {
+                      const linkMeta = taskDetail?.linked_memories?.find((lm) => lm.memory_id === m.id);
+                      const rel = linkMeta?.relationship || "context";
+                      const relLabel: Record<string, string> = { context: "上下文", result: "执行结果", evidence: "证据" };
+                      return (
+                        <div key={i} style={{
+                          padding: "8px 12px", borderRadius: 6,
+                          background: COLORS.bg.elevated, border: `1px solid ${COLORS.border.default}`,
+                        }}>
+                          <Space size={6} style={{ marginBottom: 4 }}>
+                            <Tag style={{ fontSize: 11, margin: 0 }}>{relLabel[rel] || rel}</Tag>
+                          </Space>
+                          <div style={{ color: COLORS.text.secondary, fontSize: 12.5, lineHeight: 1.5 }}>
+                            {(m.memory || "").slice(0, 120)}{(m.memory || "").length > 120 ? "..." : ""}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </Space>
                 </div>
               )}

@@ -196,6 +196,23 @@ export default function Memories() {
       },
     },
     {
+      title: "会话",
+      key: "session",
+      width: 100,
+      render: (_: unknown, r: Memory) => {
+        const sid = r.metadata?.session_id;
+        if (!sid) return <span style={{ color: COLORS.text.tertiary, fontSize: 12 }}>--</span>;
+        return (
+          <Tag style={{
+            fontSize: 11, color: COLORS.accent.blue, background: `${COLORS.accent.blue}10`,
+            border: `1px solid ${COLORS.accent.blue}20`,
+          }}>
+            {sid}
+          </Tag>
+        );
+      },
+    },
+    {
       title: "时间",
       key: "created_at",
       width: 170,
@@ -387,7 +404,7 @@ export default function Memories() {
         columns={columns}
         loading={loading}
         pagination={{ pageSize: 20, size: "small" }}
-        scroll={{ x: 700 }}
+        scroll={{ x: 800 }}
         rowKey={(r) => r.id || r.memory || `mem-${Math.random()}`}
         locale={{
           emptyText: memories.length === 0 && !loading ? (
