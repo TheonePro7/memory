@@ -13,6 +13,7 @@ import {
   ClockCircleOutlined,
 } from "@ant-design/icons";
 import { apiFetch } from "../api";
+import { getCache, setCache } from "../cache";
 import { COLORS } from "../theme";
 
 /* ── 类型定义 ──────────────────────── */
@@ -63,8 +64,14 @@ function useFetch<T>(url: string | null) {
     let cancel = false;
     setLoading(true);
     setError(null);
+    const cached = getCache<T>(url);
+    if (cached) {
+      setData(cached);
+      setLoading(false);
+      return;
+    }
     apiFetch<T>(url)
-      .then((d) => { if (!cancel) setData(d); })
+      .then((d) => { if (!cancel) { setData(d); setCache(url, d); } })
       .catch((e) => { if (!cancel) setError(e.message || "加载失败"); })
       .finally(() => { if (!cancel) setLoading(false); });
     return () => { cancel = true; };
@@ -223,12 +230,16 @@ function TasksByAgent({ tasks }: { tasks: TaskItem[] | null }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {Object.entries(grouped).slice(0, 5).map(([agent, agentTasks]) => (
         <div key={agent} style={{ background: COLORS.bg.card, borderRadius: 8, border: `1px solid ${COLORS.border.default}`, padding: "10px 14px" }}>
-          <Space size={6} style={{ marginBottom: 8 }}>
+          <Space
+            size={6} style={{ marginBottom: 8, cursor: "pointer" }}
+            onClick={() => { location.hash = `tasks?agent=${encodeURIComponent(agent)}`; }}
+          >
             <RobotOutlined style={{ color: COLORS.accent.purple, fontSize: 13 }} />
             <Typography.Text style={{ color: COLORS.text.primary, fontSize: 13, fontWeight: 500 }}>
               {agent}
             </Typography.Text>
             <Tag style={{ fontSize: 11, lineHeight: "18px", padding: "0 6px", margin: 0 }}>{agentTasks.length}</Tag>
+            <Typography.Text style={{ fontSize: 11, color: COLORS.text.tertiary }}>查看全部 →</Typography.Text>
           </Space>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {agentTasks.slice(0, 4).map((t) => (
