@@ -225,7 +225,8 @@ function RecentSessions({ sessions }: { sessions: SessionItem[] | null }) {
 }
 
 function TasksByAgent({ tasks }: { tasks: TaskItem[] | null }) {
-  if (!tasks || tasks.length === 0) {
+  const active = (tasks || []).filter((t) => t.status === "todo" || t.status === "in_progress");
+  if (active.length === 0) {
     return (
       <Empty
         image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -235,7 +236,7 @@ function TasksByAgent({ tasks }: { tasks: TaskItem[] | null }) {
   }
 
   const grouped: Record<string, TaskItem[]> = {};
-  for (const t of tasks) {
+  for (const t of active) {
     const agent = t.agent || "未分配";
     if (!grouped[agent]) grouped[agent] = [];
     grouped[agent].push(t);
@@ -471,7 +472,7 @@ function SectionCard({ title, loading, error, children }: SectionProps) {
 export default function Overview() {
   const { data: agentsData, loading: agentsLoading, error: agentsError } = useFetch<AgentsData>("/api/agents/scan");
   const { data: sessionsData, loading: sessionsLoading, error: sessionsError } = useFetch<{ sessions: SessionItem[] }>("/api/sessions?days=7");
-  const { data: tasksData, loading: tasksLoading, error: tasksError } = useFetch<{ tasks: TaskItem[] }>("/api/tasks?status=todo&status=in_progress");
+  const { data: tasksData, loading: tasksLoading, error: tasksError } = useFetch<{ tasks: TaskItem[] }>("/api/tasks");
   const { data: memoriesData, loading: memoriesLoading } = useFetch<{ results: { metadata?: Record<string, string> }[] }>("/api/memories?q=&limit=200");
 
   const allInstalled = [
