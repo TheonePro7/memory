@@ -646,7 +646,7 @@ export default function Tasks() {
           </Typography.Title>
           <Typography.Paragraph style={{ color: COLORS.text.tertiary, fontSize: 13, maxWidth: 400, margin: "0 auto 20px" }}>
             任务可以来自 beads issue（自动同步）或手动创建。
-            点击下方按钮初始化示例任务，看看看板视图的效果。
+            点击下方按钮初始化示例任务，查看看板视图的效果。
           </Typography.Paragraph>
           <Space>
             <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
