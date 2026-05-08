@@ -1,32 +1,37 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Card, Space, Tag, Divider } from "antd";
+import { Typography, Card, Space, Tag, Divider, Spin, Alert } from "antd";
 import { CheckCircleOutlined, CloseCircleOutlined, MinusCircleOutlined } from "@ant-design/icons";
 import { COLORS } from "../theme";
 
-interface AgentStatus {
+interface AgentInfo {
   name: string;
+  display_name: string;
   installed: boolean;
-  hasMemory: boolean;
+  memory_status: string;
+  category: string;
   version?: string;
 }
 
 export default function Settings() {
   const [installId, setInstallId] = useState("");
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/install-id")
       .then((r) => r.json())
       .then((d) => setInstallId(d.id))
       .catch(() => {});
+    fetch("/api/agents")
+      .then((r) => r.json())
+      .then((data) => {
+        const all = [...(data.builtin || []), ...(data.custom || [])];
+        setAgents(all);
+      })
+      .catch((e) => setError("Agent 状态加载失败"))
+      .finally(() => setLoading(false));
   }, []);
-
-  const agents: AgentStatus[] = [
-    { name: "Claude Code", installed: true, hasMemory: true },
-    { name: "Cursor", installed: false, hasMemory: false },
-    { name: "Trae", installed: false, hasMemory: false },
-    { name: "OpenClaw", installed: false, hasMemory: false },
-    { name: "LangGraph", installed: false, hasMemory: false },
-  ];
 
   return (
     <div>
@@ -72,7 +77,7 @@ export default function Settings() {
         </Space>
       </Card>
 
-      {/* Agent 检测状态（预留） */}
+      {/* Agent 检测状态 */}
       <Card
         title={
           <span style={{ color: COLORS.text.primary, fontSize: 14, fontWeight: 500 }}>Agent 检测</span>
@@ -80,52 +85,62 @@ export default function Settings() {
         styles={{ body: { padding: "20px 24px" } }}
         style={{ marginBottom: 20, background: COLORS.bg.card }}
       >
-        <Space direction="vertical" size={8} style={{ width: "100%" }}>
-          {agents.map((agent) => (
-            <div
-              key={agent.name}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "8px 12px",
-                borderRadius: 6,
-                background: COLORS.bg.elevated,
-                border: `1px solid ${COLORS.border.default}`,
-              }}
-            >
-              <span style={{ color: COLORS.text.primary, fontSize: 13.5 }}>{agent.name}</span>
-              <Space size={8}>
-                <Tag
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 20 }}><Spin /></div>
+        ) : error ? (
+          <Alert type="warning" message={error} showIcon style={{ background: `${COLORS.accent.orange}10`, border: `1px solid ${COLORS.accent.orange}30` }} />
+        ) : agents.length === 0 ? (
+          <Typography.Text style={{ color: COLORS.text.tertiary, fontSize: 13 }}>未检测到 Agent</Typography.Text>
+        ) : (
+          <Space direction="vertical" size={8} style={{ width: "100%" }}>
+            {agents.map((agent) => {
+              const hasMemory = agent.memory_status === "has_memory";
+              return (
+                <div
+                  key={agent.name}
                   style={{
-                    fontSize: 11,
-                    color: agent.installed ? COLORS.accent.green : COLORS.text.tertiary,
-                    background: agent.installed ? `${COLORS.accent.green}15` : "transparent",
-                    border: `1px solid ${agent.installed ? `${COLORS.accent.green}30` : COLORS.border.default}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    background: COLORS.bg.elevated,
+                    border: `1px solid ${COLORS.border.default}`,
                   }}
                 >
-                  {agent.installed ? "已安装" : "未检测到"}
-                </Tag>
-                {agent.installed && (
-                  <Tag
-                    style={{
+                  <div>
+                    <span style={{ color: COLORS.text.primary, fontSize: 13.5 }}>{agent.display_name || agent.name}</span>
+                    {agent.category && (
+                      <Tag style={{ fontSize: 10, marginLeft: 6, color: COLORS.text.tertiary, background: COLORS.bg.elevated, border: "none" }}>
+                        {agent.category}
+                      </Tag>
+                    )}
+                  </div>
+                  <Space size={8}>
+                    <Tag style={{
                       fontSize: 11,
-                      color: agent.hasMemory ? COLORS.accent.green : COLORS.accent.orange,
-                      background: agent.hasMemory ? `${COLORS.accent.green}15` : `${COLORS.accent.orange}15`,
-                      border: `1px solid ${agent.hasMemory ? `${COLORS.accent.green}30` : `${COLORS.accent.orange}30`}`,
-                    }}
-                  >
-                    {agent.hasMemory ? "有记忆系统" : "无记忆"}
-                  </Tag>
-                )}
-              </Space>
-            </div>
-          ))}
-          <Divider style={{ borderColor: COLORS.border.default, margin: "12px 0" }} />
-          <Typography.Text style={{ color: COLORS.text.tertiary, fontSize: 12 }}>
-            Agent 检测功能即将上线，将自动发现您机器上安装的 AI 智能体
-          </Typography.Text>
-        </Space>
+                      color: agent.installed ? COLORS.accent.green : COLORS.text.tertiary,
+                      background: agent.installed ? `${COLORS.accent.green}15` : "transparent",
+                      border: `1px solid ${agent.installed ? `${COLORS.accent.green}30` : COLORS.border.default}`,
+                    }}>
+                      {agent.installed ? "已安装" : "未检测到"}
+                    </Tag>
+                    {agent.installed && (
+                      <Tag style={{
+                        fontSize: 11,
+                        color: hasMemory ? COLORS.accent.green : COLORS.accent.orange,
+                        background: hasMemory ? `${COLORS.accent.green}15` : `${COLORS.accent.orange}15`,
+                        border: `1px solid ${hasMemory ? `${COLORS.accent.green}30` : `${COLORS.accent.orange}30`}`,
+                      }}>
+                        {hasMemory ? "有记忆" : "无记忆"}
+                      </Tag>
+                    )}
+                  </Space>
+                </div>
+              );
+            })}
+          </Space>
+        )}
       </Card>
     </div>
   );
