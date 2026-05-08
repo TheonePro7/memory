@@ -294,7 +294,7 @@ export default function Tasks() {
   const [blockerSaving, setBlockerSaving] = useState(false);
 
   // 关联记忆
-  const [linkedMemories, setLinkedMemories] = useState<Record<string, string>[]>([]);
+  const [linkedMemories, setLinkedMemories] = useState<Record<string, any>[]>([]);
   const [memoriesLoading, setMemoriesLoading] = useState(false);
 
   /* ── URL 参数同步 ── */
@@ -948,6 +948,14 @@ export default function Tasks() {
                         >
                           <Space size={6} style={{ marginBottom: 4 }}>
                             <Tag style={{ fontSize: 11, margin: 0 }}>{relLabel[rel] || rel}</Tag>
+                            {(m.metadata?.session_id) && (
+                              <Tag
+                                style={{ fontSize: 10, margin: 0, cursor: "pointer", color: COLORS.accent.blue, background: `${COLORS.accent.blue}10`, border: `1px solid ${COLORS.accent.blue}20` }}
+                                onClick={(e) => { e.stopPropagation(); location.hash = `timeline`; }}
+                              >
+                                {m.metadata.session_id}
+                              </Tag>
+                            )}
                           </Space>
                           <div style={{ color: COLORS.text.secondary, fontSize: 12.5, lineHeight: 1.5 }}>
                             {(m.memory || "").slice(0, 120)}{(m.memory || "").length > 120 ? "..." : ""}
