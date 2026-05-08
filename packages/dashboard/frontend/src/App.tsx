@@ -25,9 +25,9 @@ export interface Stats {
 
 const { Header, Content } = Layout;
 
-/* 简易错误边界 — 捕获子组件渲染崩溃，防止全局白屏 */
+/* 错误边界 — 每个懒加载页面独立包裹 */
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
+  { children: React.ReactNode; name?: string },
   { hasError: boolean; error: Error | null }
 > {
   state: { hasError: boolean; error: Error | null } = { hasError: false, error: null };
@@ -37,24 +37,21 @@ class ErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 40, textAlign: "center", color: COLORS.text.secondary, background: COLORS.bg.page, minHeight: 300 }}>
+        <div style={{ padding: "60px 40px", textAlign: "center", color: COLORS.text.secondary, background: COLORS.bg.page, minHeight: 300 }}>
           <Typography.Title level={4} style={{ color: COLORS.text.primary }}>
-            页面渲染异常
+            {this.props.name || "页面"}渲染异常
           </Typography.Title>
           <Typography.Paragraph style={{ color: COLORS.text.tertiary, fontSize: 13, marginBottom: 16 }}>
             {this.state.error?.message}
           </Typography.Paragraph>
-          <Typography.Paragraph style={{ color: COLORS.text.tertiary, fontSize: 12 }}>
-            {this.state.error?.stack?.split("\n").slice(0, 5).join("\n")}
-          </Typography.Paragraph>
-          <Button
-            onClick={() => {
-              this.setState({ hasError: false, error: null });
-              window.location.reload();
-            }}
-          >
-            重新加载
-          </Button>
+          <Space>
+            <Button onClick={() => { this.setState({ hasError: false, error: null }); location.hash = "overview"; }}>
+              返回工作台
+            </Button>
+            <Button onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}>
+              重新加载
+            </Button>
+          </Space>
         </div>
       );
     }
@@ -266,11 +263,18 @@ function App() {
               style={{ marginBottom: 16 }}
             />
           )}
-          <ErrorBoundary>
-            <Suspense fallback={<div style={{ padding: 80, textAlign: "center" }}><Spin /></div>}>
-              {pages[page] || <Overview />}
-            </Suspense>
-          </ErrorBoundary>
+          {/* 每个懒加载页面独立 ErrorBoundary + Suspense */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            {page === "overview" ? <Overview /> : (
+              <Suspense fallback={<div style={{ padding: 80, textAlign: "center" }}><Spin /></div>}>
+                {page === "memories" && <ErrorBoundary name="记忆"><Memories /></ErrorBoundary>}
+                {page === "agents" && <ErrorBoundary name="Agent"><Agents /></ErrorBoundary>}
+                {page === "timeline" && <ErrorBoundary name="时间线"><Timeline /></ErrorBoundary>}
+                {page === "tasks" && <ErrorBoundary name="任务"><Tasks /></ErrorBoundary>}
+                {page === "settings" && <ErrorBoundary name="设置"><SettingsPage /></ErrorBoundary>}
+              </Suspense>
+            )}
+          </div>
         </Content>
 
         {/* 底部信息 */}

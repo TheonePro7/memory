@@ -177,6 +177,7 @@ def list_tasks(
     project_id: str = "default",
     status: str | None = None,
     agent: str | None = None,
+    priority: str | None = None,
     limit: int = 50,
 ) -> list[dict]:
     _init_db()
@@ -189,6 +190,9 @@ def list_tasks(
         if agent:
             where += " AND agent=?"
             params.append(agent)
+        if priority:
+            where += " AND priority=?"
+            params.append(priority)
         rows = conn.execute(
             f"SELECT * FROM tasks {where} ORDER BY updated_at DESC LIMIT ?",
             params + [limit],
