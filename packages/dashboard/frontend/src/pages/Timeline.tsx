@@ -417,21 +417,31 @@ export default function Timeline() {
                   关联记忆 ({sessionMemories.length})
                 </Typography.Text>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {sessionMemories.map((m) => (
-                    <div key={m.id} style={{
-                      padding: "10px 12px", borderRadius: 6,
-                      background: COLORS.bg.elevated, border: `1px solid ${COLORS.border.default}`,
-                    }}>
-                      {m.metadata?.agent && (
-                        <Tag style={{ fontSize: 10, lineHeight: "16px", marginBottom: 6, padding: "0 4px" }}>
-                          {m.metadata.agent}
-                        </Tag>
-                      )}
-                      <div style={{ color: COLORS.text.secondary, fontSize: 12.5, lineHeight: 1.5 }}>
-                        {m.memory?.slice(0, 200)}{(m.memory?.length || 0) > 200 ? "..." : ""}
+                  {sessionMemories.map((m) => {
+                    const created = m.metadata?.created_at;
+                    return (
+                      <div key={m.id} style={{
+                        padding: "10px 12px", borderRadius: 6,
+                        background: COLORS.bg.elevated, border: `1px solid ${COLORS.border.default}`,
+                      }}>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6, alignItems: "center" }}>
+                          {m.metadata?.agent && (
+                            <Tag style={{ fontSize: 10, lineHeight: "16px", padding: "0 4px", margin: 0 }}>
+                              {m.metadata.agent}
+                            </Tag>
+                          )}
+                          {created && (
+                            <span style={{ fontSize: 10, color: COLORS.text.tertiary }}>
+                              {new Date(created).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ color: COLORS.text.secondary, fontSize: 12.5, lineHeight: 1.5 }}>
+                          {m.memory?.slice(0, 200)}{(m.memory?.length || 0) > 200 ? "..." : ""}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

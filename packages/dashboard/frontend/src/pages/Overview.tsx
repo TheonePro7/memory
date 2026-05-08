@@ -234,7 +234,7 @@ function TasksByAgent({ tasks }: { tasks: TaskItem[] | null }) {
             {agentTasks.slice(0, 4).map((t) => (
               <div
                 key={t.id}
-                onClick={() => navigateTo(`tasks`)}
+                onClick={() => { location.hash = `tasks?agent=${encodeURIComponent(agent)}`; }}
                 style={{
                   padding: "6px 8px",
                   borderRadius: 4,

@@ -337,6 +337,20 @@ export default function Tasks() {
     fetchTasks(statusFilter, priorityFilter, agentFilter);
   }, []);
 
+  /* 监听 URL agent 参数变化（从 Overview 跳转或外部链接进入） */
+  useEffect(() => {
+    const onHashChange = () => {
+      const p = new URLSearchParams(location.search);
+      const agent = p.get("agent") || undefined;
+      if (agent !== agentFilter) {
+        setAgentFilter(agent);
+        fetchTasks(statusFilter, priorityFilter, agent, true);
+      }
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, [agentFilter, statusFilter, priorityFilter]);
+
   /* ── 首次加载时获取 agent 选项 ── */
   useEffect(() => {
     apiFetch<{ agents: string[] }>("/api/tasks/agents")
@@ -910,7 +924,19 @@ export default function Tasks() {
                         <div key={i} style={{
                           padding: "8px 12px", borderRadius: 6,
                           background: COLORS.bg.elevated, border: `1px solid ${COLORS.border.default}`,
-                        }}>
+                          cursor: (m.memory || "").length > 120 ? "pointer" : "default",
+                        }}
+                          onClick={() => {
+                            if ((m.memory || "").length > 120) {
+                              Modal.info({
+                                title: "关联记忆",
+                                content: <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit", fontSize: 13, maxHeight: 400, overflow: "auto", color: COLORS.text.secondary }}>{m.memory}</pre>,
+                                width: 560,
+                                styles: { body: { background: COLORS.bg.card } },
+                              });
+                            }
+                          }}
+                        >
                           <Space size={6} style={{ marginBottom: 4 }}>
                             <Tag style={{ fontSize: 11, margin: 0 }}>{relLabel[rel] || rel}</Tag>
                           </Space>
