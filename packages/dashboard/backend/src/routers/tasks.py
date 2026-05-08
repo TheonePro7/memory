@@ -166,3 +166,23 @@ def clean_agent_memory_tasks(project_id: str = "default"):
         return {"deleted": count, "status": "ok"}
     except Exception as e:
         return _make_error(500, f"清理失败: {str(e)}")
+
+
+@router.get("/tasks/{task_id}/memories")
+def get_task_memories(task_id: str):
+    """返回指定任务关联的记忆 ID 列表。"""
+    try:
+        links = task_backend.get_memories_for_task(task_id)
+        return {"task_id": task_id, "links": links, "total": len(links)}
+    except Exception as e:
+        return _make_error(500, f"任务记忆关联加载失败: {str(e)}")
+
+
+@router.post("/tasks/{task_id}/memories")
+def link_task_memory(task_id: str, memory_id: str, relationship: str = "context"):
+    """关联一条记忆到指定任务。"""
+    try:
+        result = task_backend.link_memory_to_task(task_id, memory_id, relationship)
+        return result
+    except Exception as e:
+        return _make_error(500, f"记忆关联失败: {str(e)}")

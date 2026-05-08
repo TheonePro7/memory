@@ -48,6 +48,18 @@ CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_events_task ON task_events(task_id);
 CREATE INDEX IF NOT EXISTS idx_artifacts_task ON task_artifacts(task_id);
+
+CREATE TABLE IF NOT EXISTS memory_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL,
+    memory_id TEXT NOT NULL,
+    relationship TEXT NOT NULL DEFAULT 'context',
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (task_id) REFERENCES tasks(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_memory_links_task ON memory_links(task_id);
+CREATE INDEX IF NOT EXISTS idx_memory_links_memory ON memory_links(memory_id);
 """
 
 
@@ -139,6 +151,9 @@ def get_task(task_id: str) -> dict | None:
         artifacts = conn.execute(
             "SELECT * FROM task_artifacts WHERE task_id=? ORDER BY created_at", (task_id,)
         ).fetchall()
+        linked_memories = conn.execute(
+            "SELECT * FROM memory_links WHERE task_id=? ORDER BY created_at", (task_id,)
+        ).fetchall()
     agent_val = row["agent"] if row["agent"] is not None else ""
     return {
         "id": row["id"],
@@ -154,6 +169,7 @@ def get_task(task_id: str) -> dict | None:
         "updated_at": row["updated_at"],
         "events": [dict(e) for e in events],
         "artifacts": [dict(a) for a in artifacts],
+        "linked_memories": [dict(m) for m in linked_memories],
     }
 
 
@@ -401,6 +417,56 @@ def list_agents_from_tasks(project_id: str = "default") -> list[str]:
             (project_id,),
         ).fetchall()
     return [r["agent"] for r in rows]
+
+
+# ── 任务↔记忆关联 ──────────────────────────────
+
+
+def link_memory_to_task(task_id: str, memory_id: str, relationship: str = "context") -> dict:
+    """关联一条记忆到一个任务。"""
+    _init_db()
+    now = _now()
+    with closing(_get_conn()) as conn:
+        conn.execute(
+            "INSERT INTO memory_links (task_id, memory_id, relationship, created_at) VALUES (?, ?, ?, ?)",
+            (task_id, memory_id, relationship, now),
+        )
+        conn.commit()
+    return {"task_id": task_id, "memory_id": memory_id, "relationship": relationship}
+
+
+def get_memories_for_task(task_id: str) -> list[dict]:
+    """返回指定任务关联的所有记忆 ID 列表。"""
+    _init_db()
+    with closing(_get_conn()) as conn:
+        rows = conn.execute(
+            "SELECT * FROM memory_links WHERE task_id=? ORDER BY created_at", (task_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_tasks_for_memory(memory_id: str) -> list[dict]:
+    """返回关联到指定记忆的所有任务。"""
+    _init_db()
+    with closing(_get_conn()) as conn:
+        rows = conn.execute(
+            """SELECT t.*, ml.relationship, ml.created_at as linked_at
+               FROM tasks t JOIN memory_links ml ON t.id = ml.task_id
+               WHERE ml.memory_id=? ORDER BY ml.created_at""",
+            (memory_id,),
+        ).fetchall()
+    out = []
+    for r in rows:
+        task = {
+            "id": r["id"], "title": r["title"], "status": r["status"],
+            "priority": r["priority"], "agent": r["agent"],
+            "project_id": r["project_id"],
+            "tags": r["tags"].split(",") if r["tags"] else [],
+            "created_at": r["created_at"], "updated_at": r["updated_at"],
+            "relationship": r["relationship"], "linked_at": r["linked_at"],
+        }
+        out.append(task)
+    return out
 
 
 def clean_non_beads(project_id: str = "default") -> int:
