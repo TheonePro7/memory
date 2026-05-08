@@ -436,9 +436,16 @@ export default function Timeline() {
                             </span>
                           )}
                         </div>
-                        <div style={{ color: COLORS.text.secondary, fontSize: 12.5, lineHeight: 1.5 }}>
+                        <div style={{ color: COLORS.text.secondary, fontSize: 12.5, lineHeight: 1.5, marginBottom: 4 }}>
                           {m.memory?.slice(0, 200)}{(m.memory?.length || 0) > 200 ? "..." : ""}
                         </div>
+                        <Button
+                          type="link" size="small"
+                          onClick={() => { window.location.hash = `memories?q=${encodeURIComponent(m.memory?.slice(0, 60) || "")}`; }}
+                          style={{ fontSize: 11, padding: 0, color: COLORS.accent.blue }}
+                        >
+                          查看完整记忆 →
+                        </Button>
                       </div>
                     );
                   })}

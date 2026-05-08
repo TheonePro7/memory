@@ -60,7 +60,11 @@ export default function Memories() {
   };
 
   useEffect(() => {
-    search("", projectFilter, agentFilter);
+    const params = new URLSearchParams(location.hash.split("?")[1] || "");
+    const hashQ = params.get("q") || "";
+    const hashAgent = params.get("agent") || undefined;
+    setAgentFilter(hashAgent);
+    search(hashQ, undefined, hashAgent);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };

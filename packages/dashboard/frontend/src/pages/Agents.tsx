@@ -346,17 +346,30 @@ export default function Agents() {
                     </Tag>
                   )}
                   {agent.installed && (
-                    <Button
-                      type="link"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.location.hash = `tasks?agent=${agent.name}`;
-                      }}
-                      style={{ color: COLORS.accent.blue, fontSize: 12, padding: 0 }}
-                    >
-                      查看任务
-                    </Button>
+                    <>
+                      <Button
+                        type="link"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.hash = `tasks?agent=${agent.name}`;
+                        }}
+                        style={{ color: COLORS.accent.blue, fontSize: 12, padding: 0 }}
+                      >
+                        查看任务
+                      </Button>
+                      <Button
+                        type="link"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.hash = `memories?agent=${agent.name}`;
+                        }}
+                        style={{ color: COLORS.accent.green, fontSize: 12, padding: 0 }}
+                      >
+                        查看记忆
+                      </Button>
+                    </>
                   )}
                 </Space>
               </div>
@@ -416,6 +429,17 @@ export default function Agents() {
                   style={{ color: COLORS.accent.blue, fontSize: 12, padding: 0 }}
                 >
                   查看任务
+                </Button>
+                <Button
+                  type="link"
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.location.hash = `memories?agent=${agent.name}`;
+                  }}
+                  style={{ color: COLORS.accent.green, fontSize: 12, padding: 0 }}
+                >
+                  查看记忆
                 </Button>
               </Space>
             </div>
