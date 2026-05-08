@@ -7,6 +7,12 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces",
-    "test": "npm run test --workspaces"
+    "test": "npm run test --workspaces",
+    "dashboard": "concurrently -n backend,frontend -c cyan,magenta \"npm run dashboard:backend\" \"npm run dashboard:frontend\"",
+    "dashboard:backend": "cd packages/dashboard/backend/src && python main.py",
+    "dashboard:frontend": "cd packages/dashboard/frontend && npx vite --port 8712 --strictPort"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
   }
 }

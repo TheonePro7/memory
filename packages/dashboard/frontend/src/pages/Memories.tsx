@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from "react";
 import { apiFetch } from "../api";
 import { getCache, setCache } from "../cache";
 import { Input, Table, Tag, Typography, Space, Select, Button, Modal, Divider, Tooltip, message } from "antd";
-import { SearchOutlined, EditOutlined, DeleteOutlined, FolderOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
+import { SearchOutlined, DeleteOutlined, FolderOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { COLORS } from "../theme";
 
@@ -24,8 +24,7 @@ export default function Memories() {
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [projects, setProjects] = useState<string[]>([]);
-  const [quota, setQuota] = useState({ used: 0, total: 100, remaining: 100, bonus: 0 });
-  const [installId, setInstallId] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const search = (q: string, pid?: string, agent?: string) => {
     setLoading(true);
@@ -71,8 +70,6 @@ export default function Memories() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/quota").then(r => r.json()).then(setQuota);
-    fetch("/api/install-id").then(r => r.json()).then(d => setInstallId(d.id)).catch(() => {});
     fetch("/api/agents").then(r => r.json()).then(data => {
       const agents = (data.agents || []).map((a: any) => a.name);
       setAgentOptions(agents);
@@ -91,9 +88,24 @@ export default function Memories() {
     search(query, projectFilter, agent);
   };
 
-  const [editModal, setEditModal] = useState<{ visible: boolean; memory: Memory | null }>({ visible: false, memory: null });
-  const [editContent, setEditContent] = useState("");
-  const [saving, setSaving] = useState(false);
+  const handleInlineSave = async (id: string, value: string) => {
+    try {
+      const res = await fetch(`/api/memories/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: value }),
+      });
+      if (res.status === 403) { message.error("本月编辑配额已用完"); setEditingId(null); return; }
+      if (res.status === 404) { message.error("记忆不存在或已被删除"); setEditingId(null); return; }
+      if (!res.ok) { setEditingId(null); return; }
+      setEditingId(null);
+      message.success("记忆已更新");
+      search(query, projectFilter, agentFilter);
+    } catch {
+      message.error("网络错误，编辑失败");
+      setEditingId(null);
+    }
+  };
 
   const handleDelete = (memory: Memory) => {
     Modal.confirm({
@@ -102,7 +114,6 @@ export default function Memories() {
       style: { background: COLORS.bg.card },
       styles: { body: { background: COLORS.bg.card } },
       onOk: async () => {
-        if (!(await checkQuota())) return;
         try {
           const res = await fetch(`/api/memories/${memory.id}`, { method: "DELETE" });
           if (res.status === 403) { message.error("无权限删除"); return; }
@@ -112,46 +123,10 @@ export default function Memories() {
           message.error("网络错误，删除失败");
           return;
         }
-        setQuota(await fetch("/api/quota").then(r => r.json()).catch(() => ({ used: 0, total: 100, remaining: 100, bonus: 0 })));
         message.success("记忆已删除");
         search(query, projectFilter, agentFilter);
       },
     });
-  };
-
-  const checkQuota = async (): Promise<boolean> => {
-    const res = await fetch("/api/quota").then(r => r.json());
-    if (res.remaining <= 0) {
-      Modal.info({
-        title: "本月免费编辑次数已用完",
-        width: 440,
-        content: (
-          <div>
-            <p style={{ marginBottom: 12, fontWeight: 500, color: COLORS.text.primary }}>
-              🔥 邀请朋友安装，每成功一位 +50 次
-            </p>
-            <Input value={installId} readOnly style={{ marginBottom: 8 }} />
-            <p style={{ fontSize: 12, color: COLORS.text.tertiary, marginBottom: 16 }}>
-              已获得加成: +{res.bonus} 次
-            </p>
-            <Divider />
-            <p style={{ fontWeight: 500, color: COLORS.text.primary, marginBottom: 8 }}>
-              或升级 Pro 获得无限编辑
-            </p>
-            <ul style={{ fontSize: 13, color: COLORS.text.secondary, paddingLeft: 16, lineHeight: 1.8 }}>
-              <li>无限编辑和删除</li>
-              <li>批量清理和管理</li>
-              <li>优先级标记</li>
-            </ul>
-            <p style={{ fontSize: 20, fontWeight: 700, color: COLORS.accent.blue, margin: "12px 0", textAlign: "center" }}>
-              $15 / 月
-            </p>
-          </div>
-        ),
-      });
-      return false;
-    }
-    return true;
   };
 
   const columns: ColumnsType<Memory> = useMemo(() => [
@@ -162,10 +137,41 @@ export default function Memories() {
       ellipsis: true,
       render: (t: string, r: Memory) => {
         const display = r.metadata?.llm_summary || t;
+        const isEditing = editingId === r.id;
         return (
-          <Tooltip title={t}>
-            <span style={{ color: COLORS.text.primary, fontSize: 13.5 }}>{display}</span>
-          </Tooltip>
+          <div
+            style={{ cursor: "text", minHeight: 24 }}
+            onClick={(e) => {
+              if (!editingId && r.id) {
+                setEditingId(r.id);
+                e.stopPropagation();
+              }
+            }}
+          >
+            {isEditing ? (
+              <Input.TextArea
+                autoFocus
+                defaultValue={display}
+                rows={2}
+                style={{ fontSize: 13 }}
+                onPressEnter={(e: any) => {
+                  const val = e.target.value;
+                  if (r.id && val !== display) handleInlineSave(r.id, val);
+                  else setEditingId(null);
+                }}
+                onBlur={(e) => {
+                  const val = e.target.value;
+                  if (r.id && val !== display) handleInlineSave(r.id, val);
+                  else setEditingId(null);
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span style={{ color: COLORS.text.primary, fontSize: 13.5, wordBreak: "break-word" }}>
+                {display}
+              </span>
+            )}
+          </div>
         );
       },
     },
@@ -176,15 +182,22 @@ export default function Memories() {
       render: (_: unknown, r: Memory) => {
         const entities = r.metadata?.entities;
         if (!entities) return null;
-        return entities.split(",").map((e, i) => (
-          <Tag key={i} color="blue" style={{ marginBottom: 2, fontSize: 12 }}>{e.trim()}</Tag>
-        ));
+        try {
+          const list: string[] = typeof entities === "string" ? JSON.parse(entities) : entities;
+          return (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, maxWidth: 300 }}>
+              {list.slice(0, 3).map((e: string) => (
+                <Tag key={e} style={{ fontSize: 10, lineHeight: "18px", padding: "0 6px", margin: 0, color: COLORS.accent.purple, background: `${COLORS.accent.purple}15` }}>{e}</Tag>
+              ))}
+            </div>
+          );
+        } catch { return null; }
       },
     },
     {
       title: "项目",
       key: "project",
-      width: 110,
+      width: 100,
       render: (_: unknown, r: Memory) => {
         const pid = r.metadata?.project_id;
         return pid ? <Tag icon={<FolderOutlined />} style={{ fontSize: 12 }}>{pid}</Tag> : null;
@@ -251,34 +264,20 @@ export default function Memories() {
     {
       title: "",
       key: "actions",
-      width: 80,
+      width: 50,
       render: (_: unknown, r: Memory) => (
-        <Space size={4}>
-          <Tooltip title="编辑">
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined style={{ fontSize: 14 }} />}
-              onClick={() => {
-                setEditContent(r.memory || "");
-                setEditModal({ visible: true, memory: r });
-              }}
-              style={{ color: COLORS.text.secondary }}
-            />
-          </Tooltip>
-          <Tooltip title="删除">
-            <Button
-              type="text"
-              size="small"
-              danger
-              icon={<DeleteOutlined style={{ fontSize: 14 }} />}
-              onClick={() => handleDelete(r)}
-            />
-          </Tooltip>
-        </Space>
+        <Tooltip title="删除">
+          <Button
+            type="text"
+            size="small"
+            danger
+            icon={<DeleteOutlined style={{ fontSize: 14 }} />}
+            onClick={() => handleDelete(r)}
+          />
+        </Tooltip>
       ),
     },
-  ], []);
+  ], [editingId, memories]);
 
   return (
     <div>
@@ -389,18 +388,6 @@ export default function Memories() {
               style={{ color: COLORS.text.secondary }}
             />
           </Tooltip>
-          <Tag
-          style={{
-            fontSize: 12,
-            padding: "4px 12px",
-            borderRadius: 20,
-            border: `1px solid ${quota.remaining > 10 ? COLORS.accent.blue : COLORS.accent.orange}`,
-            background: "transparent",
-            color: quota.remaining > 10 ? COLORS.accent.blue : COLORS.accent.orange,
-          }}
-        >
-          编辑 {quota.used}/{quota.total} {quota.bonus > 0 ? `+${quota.bonus}` : ""}
-        </Tag>
         </Space>
       </div>
 
@@ -424,48 +411,6 @@ export default function Memories() {
         size="middle"
       />
       </div>
-
-      {/* 编辑弹窗 */}
-      <Modal
-        title={<span style={{ color: COLORS.text.primary }}>编辑记忆</span>}
-        open={editModal.visible}
-        onOk={async () => {
-          if (!editModal.memory?.id) return;
-          if (!(await checkQuota())) return;
-          setSaving(true);
-          try {
-            const res = await fetch(`/api/memories/${editModal.memory.id}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ content: editContent }),
-            });
-            if (res.status === 403) { message.error("无权限编辑"); setSaving(false); return; }
-            if (res.status === 404) { message.error("记忆不存在或已被删除"); setSaving(false); return; }
-            if (!res.ok) { setSaving(false); return; }
-          } catch {
-            message.error("网络错误，编辑失败");
-            setSaving(false);
-            return;
-          }
-          setQuota(await fetch("/api/quota").then(r => r.json()).catch(() => ({ used: 0, total: 100, remaining: 100, bonus: 0 })));
-          setEditModal({ visible: false, memory: null });
-          message.success("记忆已更新");
-          search(query, projectFilter, agentFilter);
-          setSaving(false);
-        }}
-        onCancel={() => { setEditModal({ visible: false, memory: null }); setSaving(false); }}
-        okText="保存"
-        cancelText="取消"
-        okButtonProps={{ loading: saving }}
-        styles={{ body: { background: COLORS.bg.card } }}
-      >
-        <Input.TextArea
-          value={editContent}
-          onChange={e => setEditContent(e.target.value)}
-          rows={4}
-          style={{ marginTop: 12 }}
-        />
-      </Modal>
     </div>
   );
 }

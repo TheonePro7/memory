@@ -1,5 +1,5 @@
 import React, { useEffect, useState, lazy, Suspense } from "react";
-import { ConfigProvider, Layout, Typography, Space, Button, Spin } from "antd";
+import { ConfigProvider, Layout, Typography, Space, Button, Spin, Tooltip } from "antd";
 import {
   BarChartOutlined,
   DatabaseOutlined,
@@ -76,7 +76,7 @@ const navItems: NavItem[] = [
 
 function App() {
   const [online, setOnline] = useState(navigator.onLine);
-  const hashPage = location.hash.replace("#", "") || "overview";
+  const hashPage = location.hash.replace("#", "") || "memories";
   const [page, setPage] = useState(hashPage);
 
   useEffect(() => {
@@ -92,7 +92,7 @@ function App() {
 
   useEffect(() => {
     const onHashChange = () => {
-      const p = location.hash.replace("#", "") || "overview";
+      const p = location.hash.replace("#", "") || "memories";
       setPage(p);
     };
     window.addEventListener("hashchange", onHashChange);
