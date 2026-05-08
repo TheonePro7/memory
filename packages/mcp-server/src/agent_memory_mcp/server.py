@@ -23,6 +23,7 @@ def remember(
     project_id: str | None = None,
     agent: str = "default",
     process: bool = False,
+    session_id: str | None = None,
 ) -> dict:
     """记住一条信息。
 
@@ -32,9 +33,10 @@ def remember(
         project_id: 项目标识符，不传则自动从 git root 推断
         agent: Agent 名称，如 "claude-code", "cursor"，默认 "default"
         process: 是否用 LLM 提取实体和摘要
+        session_id: 会话标识符（YYYY-MM-DD 日期格式）
     """
     try:
-        result = core_remember(content, tags=tags, project_id=project_id, agent=agent, process=process)
+        result = core_remember(content, tags=tags, project_id=project_id, agent=agent, process=process, session_id=session_id)
         append_session_log(content)
         audit.log("remember", content_summary=content[:50], backend="mem0", tags=tags, agent=agent, process=process)
         return {"id": result.get("id"), "backend": "mem0", "status": "stored"}

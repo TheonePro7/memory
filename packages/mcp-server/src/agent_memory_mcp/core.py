@@ -80,6 +80,7 @@ def remember(
     agent: str = "default",
     process: bool = False,
     sync_third_party: bool = True,
+    session_id: str | None = None,
 ) -> dict:
     """记忆存储：可选 LLM 加工 → 向量存储 → 可选同步到第三方。
 
@@ -89,6 +90,7 @@ def remember(
 
     Args:
         sync_third_party: 是否同步写入已注册的第三方适配器
+        session_id: 会话标识符（YYYY-MM-DD 日期格式）
     """
     if not project_id:
         project_id = detect_project_id()
@@ -105,7 +107,8 @@ def remember(
 
     # 总是写自有存储
     result = mem0_backend.add(content, project_id=project_id, tags=tags, agent=agent,
-                              entities=entities, actions=actions, llm_summary=llm_summary)
+                              entities=entities, actions=actions, llm_summary=llm_summary,
+                              session_id=session_id)
 
     # 可选同步 — 写第三方适配器（V1.0 适配器只读，写第三方后续版本实现）
     if sync_third_party:
@@ -136,10 +139,13 @@ def summarize(context: str, project_id: str | None = None, agent: str = "default
     path = md_backend.append_summary(result["summary"])
     if not project_id:
         project_id = detect_project_id()
+    # 用当天日期作为 session_id
+    from datetime import datetime
+    session_id = datetime.now().strftime("%Y-%m-%d")
     # 总是把摘要存为向量记忆，不依赖 API key（即使 fallback 截断也能存）
-    mem0_backend.add(result["summary"], tags=["auto-summary"], project_id=project_id, agent=agent)
+    mem0_backend.add(result["summary"], tags=["auto-summary"], project_id=project_id, agent=agent, session_id=session_id)
     for fact in result.get("facts", []):
-        mem0_backend.add(fact, tags=["auto-extracted"], project_id=project_id, agent=agent)
+        mem0_backend.add(fact, tags=["auto-extracted"], project_id=project_id, agent=agent, session_id=session_id)
     sync_beads(project_id)
     return {
         "summary": result["summary"],

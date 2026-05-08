@@ -85,6 +85,17 @@ def export_memories(project_id: str | None = None):
     }
 
 
+@router.get("/memories/by-session/{date}")
+def get_memories_by_session(date: str, project_id: str | None = None, limit: int = 50):
+    """返回指定 session_date 的所有 ChromaDB 记忆。"""
+    results = mem0_backend.list_all(project_id=project_id, limit=limit)
+    filtered = [
+        r for r in results
+        if r.get("metadata", {}).get("session_id") == date
+    ]
+    return {"results": filtered, "total": len(filtered)}
+
+
 @router.delete("/memories/{memory_id}")
 def delete_memory(memory_id: str):
     """删除记忆。自动校验配额并计数。"""

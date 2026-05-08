@@ -67,6 +67,7 @@ def add(
     entities: list[str] | None = None,
     actions: list[str] | None = None,
     llm_summary: str | None = None,
+    session_id: str | None = None,
 ) -> dict:
     try:
         if not content or not content.strip():
@@ -86,6 +87,8 @@ def add(
             metadata["actions"] = ",".join(actions)
         if llm_summary:
             metadata["llm_summary"] = llm_summary
+        if session_id:
+            metadata["session_id"] = session_id
 
         _get_collection().add(
             documents=[content],
