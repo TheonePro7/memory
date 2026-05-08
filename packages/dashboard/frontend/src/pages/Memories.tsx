@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from "react";
 import { apiFetch } from "../api";
 import { getCache, setCache } from "../cache";
 import { Input, Table, Tag, Typography, Space, Select, Button, Modal, Divider, Tooltip, message } from "antd";
-import { SearchOutlined, EditOutlined, DeleteOutlined, FolderOutlined, PlusOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
+import { SearchOutlined, EditOutlined, DeleteOutlined, FolderOutlined, DownloadOutlined, UploadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { COLORS } from "../theme";
 

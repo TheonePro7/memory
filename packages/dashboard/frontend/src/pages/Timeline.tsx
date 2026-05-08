@@ -5,7 +5,7 @@ import {
 import {
   ClockCircleOutlined, DownOutlined, UpOutlined,
   DeleteOutlined, SearchOutlined,
-  FileTextOutlined, RobotOutlined, FolderOutlined,
+  FileTextOutlined, RobotOutlined,
 } from "@ant-design/icons";
 import { COLORS } from "../theme";
 import { apiFetch } from "../api";

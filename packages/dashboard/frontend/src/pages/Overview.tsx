@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Card, Row, Col, Typography, Space, Skeleton, Tag, Empty, Divider, Button, Tooltip } from "antd";
 import {
   DatabaseOutlined,
-  MessageOutlined,
   ApiOutlined,
   HistoryOutlined,
   CheckSquareOutlined,

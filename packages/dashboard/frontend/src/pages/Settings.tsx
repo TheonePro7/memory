@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Card, Space, Tag, Divider, Spin, Alert } from "antd";
-import { CheckCircleOutlined, CloseCircleOutlined, MinusCircleOutlined } from "@ant-design/icons";
+import { Typography, Card, Space, Tag, Spin, Alert } from "antd";
+import { CheckCircleOutlined } from "@ant-design/icons";
 import { COLORS } from "../theme";
 
 interface AgentInfo {
