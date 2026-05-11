@@ -1,9 +1,8 @@
 """会话时间线 API"""
 
 from fastapi import APIRouter, Query
-from pathlib import Path
 from starlette.responses import JSONResponse
-from backends import md_backend
+from agent_memory_mcp.backends import md_backend
 
 router = APIRouter(tags=["sessions"])
 
@@ -28,9 +27,9 @@ def search_sessions(q: str = Query(..., min_length=1), days: int = 90):
 @router.get("/sessions/{date}")
 def get_session(date: str):
     try:
-        path = Path.cwd() / "memory" / f"{date}.md"
-        if path.exists():
-            return {"date": date, "content": path.read_text(encoding="utf-8")}
+        result = md_backend.get_session(date)
+        if result:
+            return result
         return {"date": date, "content": ""}
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"会话详情加载失败: {str(e)}"})

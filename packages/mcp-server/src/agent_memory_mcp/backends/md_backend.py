@@ -149,6 +149,15 @@ def get_recent(days: int = 7) -> list[dict]:
     return results
 
 
+def get_session(date: str) -> dict | None:
+    """返回指定日期的会话内容。"""
+    memory_dir = _get_memory_dir()
+    path = memory_dir / f"{date}.md"
+    if path.exists():
+        return {"date": date, "content": path.read_text(encoding="utf-8")}
+    return None
+
+
 def delete_session(date: str) -> bool:
     """删除指定日期的会话文件。"""
     memory_dir = _get_memory_dir()
